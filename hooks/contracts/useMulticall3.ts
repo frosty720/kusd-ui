@@ -87,7 +87,7 @@ export const encodeCall = (
   return encodeFunctionData({
     abi,
     functionName,
-    args,
+    args: args || [],
   })
 }
 

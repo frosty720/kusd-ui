@@ -82,9 +82,9 @@ export default function AuctionsPage() {
   const { data: vatCanClipper } = vat.useCan(address, clipper.address)
 
   // Fetch most recent auction for each type
-  const { data: latestFlapBid } = flapper.useBid(flapKicks && flapKicks > 0n ? flapKicks : undefined)
-  const { data: latestFlopBid } = flopper.useBid(flopKicks && flopKicks > 0n ? flopKicks : undefined)
-  const { data: latestClipSale } = clipper.useSale(clipKicks && clipKicks > 0n ? clipKicks : undefined)
+  const { data: latestFlapBid } = flapper.useBid(typeof flapKicks === 'bigint' && flapKicks > 0n ? flapKicks : undefined)
+  const { data: latestFlopBid } = flopper.useBid(typeof flopKicks === 'bigint' && flopKicks > 0n ? flopKicks : undefined)
+  const { data: latestClipSale } = clipper.useSale(typeof clipKicks === 'bigint' && clipKicks > 0n ? clipKicks : undefined)
 
   // Approval hooks
   const { approve: approveSklcFlapper, isPending: isApprovingSklcFlapper } = sklc.useApprove()
@@ -290,12 +290,12 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active surplus auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Surplus auctions start when the system has excess KUSD</p>
                 </div>
-              ) : latestFlapBid && latestFlapBid.lot > 0n ? (
+              ) : latestFlapBid && typeof latestFlapBid === 'object' && latestFlapBid !== null && 'lot' in latestFlapBid && typeof latestFlapBid.lot === 'bigint' && latestFlapBid.lot > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-white font-bold text-lg">Auction #{flapKicks?.toString()}</h3>
-                      {latestFlapBid.guy === address && (
+                      {(latestFlapBid as any).guy === address && (
                         <span className="px-3 py-1 bg-green-900/50 border border-green-500/50 rounded-full text-green-400 text-xs font-medium">
                           You're winning!
                         </span>
@@ -305,12 +305,12 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD Lot</div>
-                        <div className="text-white font-medium">{formatWAD(latestFlapBid.lot, 18)} KUSD</div>
+                        <div className="text-white font-medium">{formatWAD((latestFlapBid as any).lot, 18)} KUSD</div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">Current Bid</div>
                         <div className="text-white font-medium">
-                          {latestFlapBid.bid > 0n ? `${formatWAD(latestFlapBid.bid, 18)} sKLC` : 'No bids yet'}
+                          {(latestFlapBid as any).bid > 0n ? `${formatWAD((latestFlapBid as any).bid, 18)} sKLC` : 'No bids yet'}
                         </div>
                       </div>
                     </div>
@@ -338,7 +338,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
-                          onClick={() => flapKicks && handleTendBid(flapKicks, latestFlapBid.lot)}
+                          onClick={() => flapKicks && typeof flapKicks === 'bigint' && handleTendBid(flapKicks, (latestFlapBid as any).lot)}
                           disabled={isTendPending || isTendConfirming || !bidAmounts[`flap-${flapKicks}`]}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
                         >
@@ -348,7 +348,7 @@ export default function AuctionsPage() {
                     )}
 
                     <div className="mt-4 text-xs text-[#6b7280]">
-                      Your sKLC Balance: {sklcBalance ? formatWAD(sklcBalance, 18) : '0.00'} sKLC
+                      Your sKLC Balance: {sklcBalance && typeof sklcBalance === 'bigint' ? formatWAD(sklcBalance, 18) : '0.00'} sKLC
                     </div>
                   </div>
                 </div>
@@ -371,12 +371,12 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active debt auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Debt auctions start when the system has bad debt to cover</p>
                 </div>
-              ) : latestFlopBid && latestFlopBid.bid > 0n ? (
+              ) : latestFlopBid && typeof latestFlopBid === 'object' && latestFlopBid !== null && 'bid' in latestFlopBid && typeof latestFlopBid.bid === 'bigint' && latestFlopBid.bid > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-white font-bold text-lg">Auction #{flopKicks?.toString()}</h3>
-                      {latestFlopBid.guy === address && (
+                      {(latestFlopBid as any).guy === address && (
                         <span className="px-3 py-1 bg-green-900/50 border border-green-500/50 rounded-full text-green-400 text-xs font-medium">
                           You're winning!
                         </span>
@@ -386,11 +386,11 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD Bid (Fixed)</div>
-                        <div className="text-white font-medium">{formatWAD(latestFlopBid.bid, 18)} KUSD</div>
+                        <div className="text-white font-medium">{formatWAD((latestFlopBid as any).bid, 18)} KUSD</div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">sKLC Lot (Decreasing)</div>
-                        <div className="text-white font-medium">{formatWAD(latestFlopBid.lot, 18)} sKLC</div>
+                        <div className="text-white font-medium">{formatWAD((latestFlopBid as any).lot, 18)} sKLC</div>
                       </div>
                     </div>
 
@@ -417,7 +417,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
-                          onClick={() => flopKicks && handleDentBid(flopKicks, latestFlopBid.bid)}
+                          onClick={() => flopKicks && typeof flopKicks === 'bigint' && handleDentBid(flopKicks, (latestFlopBid as any).bid)}
                           disabled={isDentPending || isDentConfirming || !bidAmounts[`flop-${flopKicks}`]}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
                         >
@@ -427,7 +427,7 @@ export default function AuctionsPage() {
                     )}
 
                     <div className="mt-4 text-xs text-[#6b7280]">
-                      Your Vat KUSD: {vatKusd ? formatRAD(vatKusd) : '0.00'} KUSD
+                      Your Vat KUSD: {vatKusd && typeof vatKusd === 'bigint' ? formatRAD(vatKusd) : '0.00'} KUSD
                     </div>
                   </div>
                 </div>
@@ -451,7 +451,7 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active {collateralSymbols[selectedCollateral]} auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Collateral auctions start when vaults are liquidated</p>
                 </div>
-              ) : latestClipSale && latestClipSale.lot > 0n ? (
+              ) : latestClipSale && typeof latestClipSale === 'object' && latestClipSale !== null && 'lot' in latestClipSale && typeof latestClipSale.lot === 'bigint' && latestClipSale.lot > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -464,11 +464,11 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">Collateral Available</div>
-                        <div className="text-white font-medium">{formatWAD(latestClipSale.lot, 18)} {collateralSymbols[selectedCollateral]}</div>
+                        <div className="text-white font-medium">{formatWAD((latestClipSale as any).lot, 18)} {collateralSymbols[selectedCollateral]}</div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD to Raise</div>
-                        <div className="text-white font-medium">{formatRAD(latestClipSale.tab)} KUSD</div>
+                        <div className="text-white font-medium">{formatRAD((latestClipSale as any).tab)} KUSD</div>
                       </div>
                     </div>
 
@@ -495,7 +495,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
-                          onClick={() => clipKicks && handleTakeBid(clipKicks)}
+                          onClick={() => clipKicks && typeof clipKicks === 'bigint' && handleTakeBid(clipKicks)}
                           disabled={isTakePending || isTakeConfirming || !bidAmounts[`clip-${clipKicks}`]}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
                         >
@@ -505,7 +505,7 @@ export default function AuctionsPage() {
                     )}
 
                     <div className="mt-4 text-xs text-[#6b7280]">
-                      Your Vat KUSD: {vatKusd ? formatRAD(vatKusd) : '0.00'} KUSD
+                      Your Vat KUSD: {vatKusd && typeof vatKusd === 'bigint' ? formatRAD(vatKusd) : '0.00'} KUSD
                     </div>
                   </div>
                 </div>

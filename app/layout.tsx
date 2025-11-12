@@ -11,6 +11,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "KUSD - KalyChain Stablecoin",
   description: "Decentralized stablecoin system on KalyChain - Mint, borrow, and earn with KUSD",
+  icons: {
+    icon: '/icons/logo.svg',
+    apple: '/icons/logo.svg',
+  },
 };
 
 export default function RootLayout({

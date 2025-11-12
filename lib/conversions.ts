@@ -7,34 +7,6 @@
 import { WAD, RAY, RAD, TOKEN_DECIMALS } from './constants'
 
 /**
- * Convert between WAD, RAY, and RAD
- */
-
-export function wadToRay(wad: bigint): bigint {
-  return wad * (RAY / WAD)
-}
-
-export function rayToWad(ray: bigint): bigint {
-  return ray / (RAY / WAD)
-}
-
-export function wadToRad(wad: bigint): bigint {
-  return wad * (RAD / WAD)
-}
-
-export function radToWad(rad: bigint): bigint {
-  return rad / (RAD / WAD)
-}
-
-export function rayToRad(ray: bigint): bigint {
-  return ray * (RAD / RAY)
-}
-
-export function radToRay(rad: bigint): bigint {
-  return rad / (RAD / RAY)
-}
-
-/**
  * Convert token amounts to WAD (18 decimals)
  * 
  * This is useful for normalizing different token decimals to a common precision.

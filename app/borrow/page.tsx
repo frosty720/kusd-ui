@@ -86,7 +86,7 @@ export default function BorrowPage() {
   const currentDebt = art * rate / 10n ** 27n // Convert from RAD to WAD
 
   // Check if approval is needed for repaying
-  const needsApproval = kusdAllowance !== undefined && repayAmount && parseWAD(repayAmount) > kusdAllowance
+  const needsApproval = !!(kusdAllowance !== undefined && typeof kusdAllowance === 'bigint' && repayAmount && parseWAD(repayAmount) > kusdAllowance)
 
   const handleApprove = () => {
     if (!address) {
@@ -116,7 +116,7 @@ export default function BorrowPage() {
     try {
       const amountWAD = parseWAD(repayAmount)
 
-      if (amountWAD > (kusdBalance || 0n)) {
+      if (amountWAD > (typeof kusdBalance === 'bigint' ? kusdBalance : 0n)) {
         setError('Insufficient KUSD balance')
         return
       }
@@ -450,7 +450,7 @@ export default function BorrowPage() {
                     </button>
                     <div className="text-right">
                       <div className="text-sm text-[#6b7280]">
-                        Wallet: {formatWAD(kusdBalance || 0n, 2)} KUSD
+                        Wallet: {formatWAD(typeof kusdBalance === 'bigint' ? kusdBalance : 0n, 2)} KUSD
                       </div>
                       {internalKusd > 0n && (
                         <div className="text-xs text-yellow-400">
