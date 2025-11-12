@@ -1,0 +1,89 @@
+[
+  {
+    "type": "function",
+    "name": "exit",
+    "inputs": [
+      {
+        "name": "kusdJoin",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "pot",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "wad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "exitAll",
+    "inputs": [
+      {
+        "name": "kusdJoin",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "pot",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "join",
+    "inputs": [
+      {
+        "name": "kusdJoin",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "pot",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "wad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "kusdJoin_join",
+    "inputs": [
+      {
+        "name": "apt",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "urn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "wad",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]

@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* KalyPay Color Scheme */
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+
+  --color-primary: #F59E0B;
+  --color-primary-dark: #D97706;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-tertiary: #1f1f1f;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9ca3af;
+  --color-text-tertiary: #6b7280;
+
+  --color-border: #262626;
+  --color-border-light: #404040;
 }
 
 @theme inline {
@@ -10,13 +27,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
