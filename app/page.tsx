@@ -55,7 +55,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]"></span>
               </span>
-              <span className="text-sm text-[#9ca3af] font-medium">Live on KalyChain Testnet</span>
+              <span className="text-sm text-[#9ca3af] font-medium">Live on KalyChain Mainnet</span>
             </div>
 
             <h1 className="mb-6 text-5xl font-bold tracking-tight text-white sm:text-7xl">
