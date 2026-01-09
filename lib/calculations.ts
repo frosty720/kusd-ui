@@ -56,9 +56,9 @@ export function calculateLiquidationPrice(
 
 /**
  * Calculate maximum KUSD that can be minted
- * 
+ *
  * Formula: (collateral * price) / liquidationRatio - currentDebt
- * 
+ *
  * @param collateral - Amount of collateral in WAD
  * @param price - Collateral price in WAD
  * @param liquidationRatio - Liquidation ratio in WAD
@@ -75,32 +75,37 @@ export function calculateMaxMint(
   debtCeiling: bigint = 0n,
   totalDebt: bigint = 0n
 ): bigint {
+  // Guard against division by zero
+  if (liquidationRatio === 0n) {
+    return 0n
+  }
+
   // Calculate max based on collateral
   const collateralValue = wadMul(collateral, price)
   const maxFromCollateral = wadDiv(collateralValue, liquidationRatio)
-  const availableFromCollateral = maxFromCollateral > currentDebt 
-    ? maxFromCollateral - currentDebt 
+  const availableFromCollateral = maxFromCollateral > currentDebt
+    ? maxFromCollateral - currentDebt
     : 0n
-  
+
   // If no debt ceiling check, return collateral-based max
   if (debtCeiling === 0n) {
     return availableFromCollateral
   }
-  
+
   // Calculate available from debt ceiling
-  const availableFromCeiling = debtCeiling > totalDebt 
-    ? debtCeiling - totalDebt 
+  const availableFromCeiling = debtCeiling > totalDebt
+    ? debtCeiling - totalDebt
     : 0n
-  
+
   // Return minimum of both constraints
   return min(availableFromCollateral, availableFromCeiling)
 }
 
 /**
  * Calculate maximum collateral that can be withdrawn
- * 
+ *
  * Formula: collateral - (debt * liquidationRatio) / price
- * 
+ *
  * @param collateral - Amount of collateral in WAD
  * @param debt - Amount of debt in WAD
  * @param price - Collateral price in WAD
@@ -116,14 +121,19 @@ export function calculateMaxWithdraw(
   if (debt === 0n) {
     return collateral // No debt = can withdraw all
   }
-  
+
+  // Guard against division by zero
+  if (price === 0n) {
+    return 0n
+  }
+
   const requiredValue = wadMul(debt, liquidationRatio)
   const requiredCollateral = wadDiv(requiredValue, price)
-  
+
   if (collateral <= requiredCollateral) {
     return 0n // Already at or below liquidation ratio
   }
-  
+
   return collateral - requiredCollateral
 }
 
@@ -251,6 +261,10 @@ export function calculateRequiredCollateral(
   price: bigint,
   liquidationRatio: bigint
 ): bigint {
+  // Guard against division by zero
+  if (price === 0n) {
+    return 0n
+  }
   const requiredValue = wadMul(debt, liquidationRatio)
   return wadDiv(requiredValue, price)
 }

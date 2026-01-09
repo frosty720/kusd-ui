@@ -21,6 +21,13 @@ export * from './contracts/useOracle'
 export * from './contracts/useJug'
 export * from './contracts/useDSProxy'
 
+// Admin hooks
+export * from './contracts/useEnd'
+export * from './contracts/useVow'
+export * from './contracts/usePSM'
+export * from './contracts/useDexPair'
+
 // High-level hooks
 export * from './useUserPosition'
+export * from './useUserPortfolio'
 

@@ -16,6 +16,7 @@ export function wadMul(a: bigint, b: bigint): bigint {
 }
 
 export function wadDiv(a: bigint, b: bigint): bigint {
+  if (b === 0n) return 0n
   return (a * WAD) / b
 }
 
@@ -36,6 +37,7 @@ export function rayMul(a: bigint, b: bigint): bigint {
 }
 
 export function rayDiv(a: bigint, b: bigint): bigint {
+  if (b === 0n) return 0n
   return (a * RAY) / b
 }
 
@@ -56,6 +58,7 @@ export function radMul(a: bigint, b: bigint): bigint {
 }
 
 export function radDiv(a: bigint, b: bigint): bigint {
+  if (b === 0n) return 0n
   return (a * RAD) / b
 }
 

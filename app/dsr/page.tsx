@@ -91,12 +91,12 @@ export default function DSRPage() {
   // Calculate earned interest (current value - original deposit)
   const earnedInterest = userKusdInDSR > userPieAmount ? userKusdInDSR - userPieAmount : 0n
 
-  // Convert DSR rate to APR percentage
+  // Convert DSR rate to APY percentage
   // DSR is in RAY format (10^27), where 1.0 = 10^27
-  // APR = (dsr - 1) * seconds_per_year
-  const secondsPerYear = 365.25 * 24 * 60 * 60
+  // APY = (rate^seconds_per_year - 1) * 100
+  const SECONDS_PER_YEAR = 31536000
   const dsrAPR = dsrRateValue > 10n ** 27n
-    ? Number((dsrRateValue - 10n ** 27n) * BigInt(Math.floor(secondsPerYear))) / Number(10n ** 27n) * 100
+    ? (Math.pow(Number(dsrRateValue) / Number(10n ** 27n), SECONDS_PER_YEAR) - 1) * 100
     : 0
 
   // Check if approval is needed for depositing (approve proxy to spend KUSD)

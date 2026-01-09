@@ -24,9 +24,13 @@ export default function Home() {
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint' ? Number(formatRAD(potTotalPie)) : 0
 
   // Calculate DSR APY (dsr is per-second rate in RAY format)
-  // APY = (dsr^(seconds_per_year) - 1) * 100
-  // Simplified: (dsr - 1) * seconds_per_year * 100
-  const dsrAPY = potDsr && typeof potDsr === 'bigint' ? ((Number(formatRAY(potDsr)) - 1) * 365 * 24 * 60 * 60 * 100) : 0
+  // APY = (rate^seconds_per_year - 1) * 100
+  // Must use raw bigint division to preserve precision (formatRAY loses precision)
+  const SECONDS_PER_YEAR = 31536000
+  const RAY = 10n ** 27n
+  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY
+    ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
+    : 0
 
   // Estimate TVL (assume 150% collateralization on average)
   const estimatedTVL = kusdSupply * 1.5
