@@ -67,7 +67,7 @@ export default function WrapPage() {
         wrap(amountWAD)
       } else {
         // Check if user has enough sKLC
-        if (sklcBalance && amountWAD > sklcBalance) {
+        if (sklcBalance && typeof sklcBalance === 'bigint' && amountWAD > sklcBalance) {
           setError('Insufficient sKLC balance')
           return
         }
@@ -84,7 +84,7 @@ export default function WrapPage() {
       const gasReserve = parseWAD('0.01')
       const maxAmount = klcBalance.value > gasReserve ? klcBalance.value - gasReserve : 0n
       setAmount(formatWAD(maxAmount, 6))
-    } else if (!isWrapping && sklcBalance) {
+    } else if (!isWrapping && sklcBalance && typeof sklcBalance === 'bigint') {
       setAmount(formatWAD(sklcBalance, 6))
     }
   }
