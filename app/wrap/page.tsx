@@ -122,7 +122,7 @@ export default function WrapPage() {
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">Your sKLC Balance</div>
               <div className="text-2xl font-bold text-white">
-                {sklcBalance ? formatWAD(sklcBalance, 4) : '0.00'} sKLC
+                {sklcBalance && typeof sklcBalance === 'bigint' ? formatWAD(sklcBalance, 4) : '0.00'} sKLC
               </div>
             </div>
           </div>
