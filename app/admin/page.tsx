@@ -1,7 +1,7 @@
 'use client'
 
 import Navigation from '@/components/Navigation'
-import { useChainId, useAccount, useBalance } from 'wagmi'
+import { useChainId, useAccount, useBalance, useReadContract } from 'wagmi'
 import { useVat, usePot, useEnd, useVow, useTokenBalance, usePSM, useKusdPrice, useOracle } from '@/hooks'
 import { formatRAD, formatRAY, formatWAD } from '@/lib'
 import { useState } from 'react'
@@ -13,10 +13,30 @@ const PSM_ADDRESS = process.env.NEXT_PUBLIC_PSM_ADDRESS as `0x${string}` | undef
 const POCKET_ADDRESS = process.env.NEXT_PUBLIC_PSM_POCKET_ADDRESS as `0x${string}` | undefined
 const KEEPER_WALLET = process.env.NEXT_PUBLIC_KEEPER_WALLET as `0x${string}` | undefined
 
+// Admin NFT contract address - only holders can access admin functions
+const ADMIN_NFT_ADDRESS = '0x6B9557d1A52B9813288f45518D880C891b49491a' as const
+
 export default function AdminPage() {
   const chainId = useChainId()
   const { address, isConnected } = useAccount()
   const [showShutdownConfirm, setShowShutdownConfirm] = useState(false)
+
+  // Check if user holds the admin NFT
+  const { data: adminNftBalance, isLoading: isNftLoading } = useReadContract({
+    address: ADMIN_NFT_ADDRESS,
+    abi: [{
+      name: 'balanceOf',
+      type: 'function',
+      stateMutability: 'view',
+      inputs: [{ name: 'owner', type: 'address' }],
+      outputs: [{ name: '', type: 'uint256' }],
+    }] as const,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  })
+
+  const hasAdminNft = adminNftBalance && typeof adminNftBalance === 'bigint' && adminNftBalance > 0n
 
   // Get contracts for display
   const contracts = chainId === 3888 ? MAINNET_CONTRACTS : TESTNET_CONTRACTS
@@ -156,6 +176,58 @@ export default function AdminPage() {
     } else {
       setShowShutdownConfirm(true)
     }
+  }
+
+  // Access denied if not connected or doesn't hold NFT
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
+        <Navigation />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-12 text-center">
+            <div className="text-6xl mb-6">🔒</div>
+            <h1 className="text-3xl font-bold text-white mb-4">Admin Access Required</h1>
+            <p className="text-[#9ca3af] mb-6">Please connect your wallet to access the admin dashboard.</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (isNftLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
+        <Navigation />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-12 text-center">
+            <div className="text-6xl mb-6 animate-pulse">🔐</div>
+            <h1 className="text-3xl font-bold text-white mb-4">Verifying Access...</h1>
+            <p className="text-[#9ca3af]">Checking admin NFT ownership...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!hasAdminNft) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
+        <Navigation />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-12 text-center">
+            <div className="text-6xl mb-6">⛔</div>
+            <h1 className="text-3xl font-bold text-red-400 mb-4">Access Denied</h1>
+            <p className="text-[#9ca3af] mb-6">
+              You must hold the Admin NFT to access this page.
+            </p>
+            <div className="bg-[#1a1a1a] border border-[#262626] rounded-lg p-4 inline-block">
+              <p className="text-xs text-[#6b7280] mb-1">Admin NFT Contract:</p>
+              <code className="text-xs text-[#f59e0b] break-all">{ADMIN_NFT_ADDRESS}</code>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
