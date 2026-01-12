@@ -77,7 +77,7 @@ export function useUserPosition(
   
   // Calculate collateral value in USD
   const collateralValue = collateral > 0n && price > 0n 
-    ? (collateral * price) / 10n ** 18n 
+    ? (collateral * price) / 10n ** 27n 
     : 0n
   
   // Check if position is safe
