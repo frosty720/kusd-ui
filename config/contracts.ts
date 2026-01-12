@@ -145,7 +145,7 @@ export const MAINNET_CONTRACTS: NetworkContracts = {
     kusdJoin: '0x90fdfd47dfaf84ccd568a596dc70ec2c0d80c571',
     proxyRegistry: '0x5649cfb8fca0657b6b33461a2d2ac26e62713c49',
     proxyFactory: '0x7dBd86439CcFfA5b0883667631FdE919f0184B27',
-    proxyActions: '0x888c259ed3740a7f79e3c443d5e731389c4c98f3',
+    proxyActions: '0xe5803927A79BfEf86Ef8055bed4be1a9454414EB', // KssProxyActionsDsr (deployed 2026-01-12)
   },
   collateral: {
     'WBTC-A': {
