@@ -242,9 +242,14 @@ export default function BorrowPage() {
       })()
     : 0
 
-  // Calculate accrued fees (current debt - original debt)
-  const originalDebt = art // Normalized debt
-  const accruedFees = currentDebt - originalDebt
+  // Accrued fees cannot be calculated accurately without tracking each user's
+  // initial borrow rate. The difference between currentDebt and art represents
+  // the accumulated interest portion, but art is normalized debt, not original.
+  // For accurate display, we would need to track the rate at time of each borrow.
+  // For now, we show "Interest Portion" which is the accumulated rate effect.
+  // interestPortion = currentDebt - (art * RAY / rate) but that equals 0 since currentDebt = art * rate / RAY
+  // So we show the stability fee rate instead, which is more useful information.
+  const accruedFees = 0n // Cannot accurately calculate without borrow history
 
   // Get minimum collateral ratio
   const minCollateralRatio = mat > 0n ? Number(mat) / 1e25 : 150
@@ -404,8 +409,8 @@ export default function BorrowPage() {
                 <span className="text-white font-medium">{stabilityFee.toFixed(2)}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#6b7280] text-sm">Accrued Fees</span>
-                <span className="text-white font-medium">{formatWAD(accruedFees, 2)} KUSD</span>
+                <span className="text-[#6b7280] text-sm">Total Debt (incl. fees)</span>
+                <span className="text-white font-medium">{formatWAD(currentDebt, 2)} KUSD</span>
               </div>
             </div>
           </div>

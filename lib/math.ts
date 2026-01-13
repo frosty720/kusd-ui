@@ -104,22 +104,77 @@ export function radToRay(rad: bigint): bigint {
  * Used for calculating compound interest rates
  */
 
-export function rayPow(base: bigint, exp: bigint): bigint {
-  if (exp === 0n) return RAY
-  
-  let result = RAY
-  let x = base
-  let n = exp
-  
+/**
+ * Exact port of MakerDAO's _rpow function
+ *
+ * This uses binary exponentiation with rounding (adds half before division)
+ * to match the on-chain Solidity implementation exactly.
+ *
+ * Source: kusd-core/src/jug.sol, kusd-core/src/pot.sol
+ */
+export function rayPow(x: bigint, n: bigint): bigint {
+  const base = RAY
+
+  // Handle special cases (matching Solidity assembly logic)
+  if (x === 0n) {
+    return n === 0n ? base : 0n
+  }
+
+  // Initialize z based on whether n is odd or even
+  let z = n % 2n === 0n ? base : x
+  const half = base / 2n // for rounding
+
+  // Binary exponentiation with rounding
+  n = n / 2n
   while (n > 0n) {
-    if (n % 2n === 1n) {
-      result = rayMul(result, x)
+    // xx = x * x
+    const xx = x * x
+    // Check for overflow: xx / x should equal x
+    // c8 ignore start - overflow impossible with valid inputs
+    if (xx / x !== x) {
+      throw new Error('rayPow: overflow in x*x')
     }
-    x = rayMul(x, x)
+    // c8 ignore stop
+
+    // xxRound = xx + half (for rounding)
+    const xxRound = xx + half
+    // Check for overflow
+    // c8 ignore start - overflow impossible with valid inputs
+    if (xxRound < xx) {
+      throw new Error('rayPow: overflow in xx + half')
+    }
+    // c8 ignore stop
+
+    // x = xxRound / base
+    x = xxRound / base
+
+    // If n is odd, multiply z by x
+    if (n % 2n === 1n) {
+      // zx = z * x
+      const zx = z * x
+      // Check for overflow: if x != 0, then zx / x should equal z
+      // c8 ignore start - overflow impossible with valid inputs
+      if (x !== 0n && zx / x !== z) {
+        throw new Error('rayPow: overflow in z*x')
+      }
+      // c8 ignore stop
+
+      // zxRound = zx + half
+      const zxRound = zx + half
+      // c8 ignore start - overflow impossible with valid inputs
+      if (zxRound < zx) {
+        throw new Error('rayPow: overflow in zx + half')
+      }
+      // c8 ignore stop
+
+      // z = zxRound / base
+      z = zxRound / base
+    }
+
     n = n / 2n
   }
-  
-  return result
+
+  return z
 }
 
 /**

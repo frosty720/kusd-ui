@@ -91,17 +91,23 @@ export default function DepositPage() {
   // After join succeeds, lock the collateral in CDP with frob
   useEffect(() => {
     if (isDepositSuccess && depositedAmount && address) {
-      // Lock collateral in CDP: dink = deposited amount, dart = 0 (no debt change)
+      // Convert from token decimals to WAD (18 decimals) for frob
+      // The Vat stores all collateral in WAD, so dink must be in WAD
+      const dinkWAD = collateralConfig.decimals === 18
+        ? depositedAmount
+        : depositedAmount * (10n ** BigInt(18 - collateralConfig.decimals))
+
+      // Lock collateral in CDP: dink = deposited amount in WAD, dart = 0 (no debt change)
       frob(
         collateralConfig.ilk as `0x${string}`,
         address,
         address,
         address,
-        depositedAmount, // dink - lock collateral
+        dinkWAD, // dink - lock collateral (in WAD)
         0n // dart - no debt change
       )
     }
-  }, [isDepositSuccess, depositedAmount, address, frob, collateralConfig.ilk])
+  }, [isDepositSuccess, depositedAmount, address, frob, collateralConfig.ilk, collateralConfig.decimals])
 
   // Reset form on final success
   useEffect(() => {
@@ -227,7 +233,12 @@ export default function DepositPage() {
 
   // Calculate USD value
   const usdValue = amount && oraclePrice > 0n ? (() => {
-    const amountWAD = parseTokenAmount(amount, selectedCollateral.symbol)
+    const amountTokenDecimals = parseTokenAmount(amount, selectedCollateral.symbol)
+    // Normalize to WAD (18 decimals) before multiplying by price
+    const decimals = BigInt(collateralConfig.decimals)
+    const amountWAD = collateralConfig.decimals === 18
+      ? amountTokenDecimals
+      : amountTokenDecimals * (10n ** (18n - decimals))
     const value = (amountWAD * oraclePrice) / 10n ** 18n // WAD * WAD / WAD = WAD
     return formatWAD(value, 2)
   })() : '0.00'

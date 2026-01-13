@@ -181,7 +181,10 @@ export default function MintPage() {
       }
 
       // Check minimum debt requirement (dust)
-      const newDebtRAD = (art + amountWAD) * rate
+      // Must normalize amountWAD to get new art, then multiply by rate for RAD
+      // newArt = art + (amountWAD * RAY / rate)
+      // newDebtRAD = newArt * rate = art * rate + amountWAD * RAY
+      const newDebtRAD = art * rate + amountWAD * 10n ** 27n
       if (newDebtRAD < dust && newDebtRAD > 0n) {
         setError(`Minimum debt is ${formatRAD(dust, 2)} KUSD`)
         return

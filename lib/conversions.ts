@@ -22,9 +22,11 @@ export function tokenToWad(amount: bigint, tokenSymbol: string): bigint {
     const scaleFactor = 10n ** BigInt(18 - decimals)
     return amount * scaleFactor
   } else {
-    // Scale down (shouldn't happen with current tokens, but handle it)
+    // Scale down - defensive code for hypothetical > 18 decimal tokens
+    // c8 ignore start
     const scaleFactor = 10n ** BigInt(decimals - 18)
     return amount / scaleFactor
+    // c8 ignore stop
   }
 }
 
@@ -42,9 +44,11 @@ export function wadToToken(wad: bigint, tokenSymbol: string): bigint {
     const scaleFactor = 10n ** BigInt(18 - decimals)
     return wad / scaleFactor
   } else {
-    // Scale up (shouldn't happen with current tokens, but handle it)
+    // Scale up - defensive code for hypothetical > 18 decimal tokens
+    // c8 ignore start
     const scaleFactor = 10n ** BigInt(decimals - 18)
     return wad * scaleFactor
+    // c8 ignore stop
   }
 }
 

@@ -112,7 +112,7 @@ export default function AdminPage() {
   const maxDebt = debtCeiling && typeof debtCeiling === 'bigint'
     ? Number(formatRAD(debtCeiling)) : 0
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatRAD(potTotalPie)) : 0
+    ? Number(formatWAD(potTotalPie)) : 0
   // Calculate DSR APY: (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
   const SECONDS_PER_YEAR = 31536000

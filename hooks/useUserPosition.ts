@@ -12,7 +12,6 @@ import { type CollateralType } from '@/config/contracts'
 import { COLLATERAL_ILKS } from '@/lib/constants'
 import {
   calculateCollateralRatio,
-  calculateLiquidationPrice,
   calculateMaxMint,
   calculateMaxWithdraw,
   calculateHealthFactor,
@@ -55,13 +54,22 @@ export function useUserPosition(
   
   // Calculate derived values
   const totalDebt = calculateTotalDebt(normalizedDebt, rate)
-  
+
   // Get oracle price (spot includes safety margin, we need raw price)
   // price = spot * mat / RAY
   const price = mat > 0n ? rayMul(spot, mat) : 0n
-  
+
   const collateralRatio = calculateCollateralRatio(collateral, price, totalDebt)
-  const liquidationPrice = calculateLiquidationPrice(collateral, totalDebt, mat)
+
+  // Calculate liquidation price in WAD (USD per unit of collateral)
+  // Formula: (debt * mat) / (collateral * 10^9)
+  // - debt (WAD) * mat (RAY) = 10^45 (RAD)
+  // - collateral (WAD) * 10^9 = 10^27
+  // - 10^45 / 10^27 = 10^18 (WAD)
+  const liquidationPrice = collateral > 0n && totalDebt > 0n && mat > 0n
+    ? (totalDebt * mat) / (collateral * 10n ** 9n)
+    : 0n
+
   const healthFactor = calculateHealthFactor(collateralRatio, mat)
   
   const maxMint = calculateMaxMint(

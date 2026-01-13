@@ -88,8 +88,12 @@ export default function DSRPage() {
   // Calculate user's share of the Pot
   const userShare = totalPieAmount > 0n ? Number((userPieAmount * 10000n) / totalPieAmount) / 100 : 0
 
-  // Calculate earned interest (current value - original deposit)
-  const earnedInterest = userKusdInDSR > userPieAmount ? userKusdInDSR - userPieAmount : 0n
+  // NOTE: Earned interest cannot be calculated accurately on-chain.
+  // The Pot contract only stores 'pie' (share count), not the original KUSD deposited.
+  // To calculate real earnings, we would need: originalDeposit = pie * chi_at_deposit_time
+  // Since chi_at_deposit_time is not stored, we cannot determine actual earnings.
+  // We set this to 0 to avoid showing inaccurate/misleading numbers.
+  const earnedInterest = 0n // Not calculable without deposit history
 
   // Convert DSR rate to APY percentage
   // DSR is in RAY format (10^27), where 1.0 = 10^27
@@ -366,9 +370,9 @@ export default function DSRPage() {
               <div className="text-[#6b7280] text-xs mt-1">KUSD</div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
-              <div className="text-[#6b7280] text-sm mb-1">Earned Interest</div>
-              <div className="text-3xl font-bold text-[#FBBF24]">{formatWAD(earnedInterest, 2)}</div>
-              <div className="text-[#6b7280] text-xs mt-1">KUSD</div>
+              <div className="text-[#6b7280] text-sm mb-1">Current APY</div>
+              <div className="text-3xl font-bold text-[#FBBF24]">{dsrAPR.toFixed(2)}%</div>
+              <div className="text-[#6b7280] text-xs mt-1">Annual Rate</div>
             </div>
           </div>
 
@@ -548,7 +552,7 @@ export default function DSRPage() {
                   <div className="flex justify-between mt-2">
                     <button
                       type="button"
-                      onClick={() => setWithdrawAmount(formatWAD(userPieAmount, 18))}
+                      onClick={() => setWithdrawAmount(formatWAD(userKusdInDSR, 18))}
                       className="text-sm text-[#F59E0B] hover:text-[#FBBF24]"
                     >
                       Max
@@ -561,13 +565,13 @@ export default function DSRPage() {
 
                 <div className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[#6b7280] text-sm">Interest Earned</span>
-                    <span className="text-[#22C55E] font-medium">+{formatWAD(earnedInterest, 2)} KUSD</span>
+                    <span className="text-[#6b7280] text-sm">Current Balance</span>
+                    <span className="text-white font-medium">{formatWAD(userKusdInDSR, 2)} KUSD</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[#6b7280] text-sm">You Will Receive (to Vat)</span>
                     <span className="text-white font-medium">
-                      {withdrawAmount ? formatWAD((parseWAD(withdrawAmount) * chiValue) / 10n ** 27n, 2) : '0.00'} KUSD
+                      {withdrawAmount || '0.00'} KUSD
                     </span>
                   </div>
                 </div>

@@ -81,8 +81,11 @@ export function useUserPortfolio(chainId: number, userAddress: Address | undefin
   
   // DSR balance = pie * chi / RAY
   const dsrBalance = (pie * chiValue) / RAY
-  // Approximate earnings (this is simplified - real calculation needs deposit history)
-  const dsrEarnings = dsrBalance > pie ? dsrBalance - pie : 0n
+  // NOTE: Earnings cannot be calculated accurately without deposit history.
+  // The Pot contract only stores 'pie' (share count), not the original KUSD amount.
+  // We would need chi_at_deposit_time to calculate: originalDeposit = pie * chi_at_deposit
+  // Setting to 0 to avoid showing inaccurate numbers.
+  const dsrEarnings = 0n
   
   // Calculate DSR APY: (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
@@ -107,12 +110,13 @@ export function useUserPortfolio(chainId: number, userAddress: Address | undefin
   const totalDebt = vaults.reduce((sum, v) => sum + v.totalDebt, 0n)
   
   // Calculate weighted average health factor
+  // Note: healthFactor is in WAD (result of wadDiv on RAY/RAY)
   let weightedHealthSum = 0
   let totalWeight = 0
   for (const vault of activeVaults) {
     if (vault.totalDebt > 0n) {
       const weight = Number(formatWAD(vault.totalDebt))
-      weightedHealthSum += Number(formatRAY(vault.healthFactor)) * weight
+      weightedHealthSum += Number(formatWAD(vault.healthFactor)) * weight
       totalWeight += weight
     }
   }

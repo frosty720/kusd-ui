@@ -57,7 +57,7 @@ export default function DashboardPage() {
     ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
     : 0
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatRAD(potTotalPie)) : 0
+    ? Number(formatWAD(potTotalPie)) : 0
 
   // Format wallet balances
   const klcBalanceNum = klcBalance?.value ? Number(formatUnits(klcBalance.value, 18)) : 0
@@ -108,10 +108,10 @@ export default function DashboardPage() {
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           {/* Wallet Balances */}
           <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4">💰 Your Wallet</h3>
+            <h3 className="text-lg font-bold text-white mb-4">💰 Your Balances</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">KUSD</span>
+                <span className="text-[#9ca3af]">KUSD (Vat Balance)</span>
                 <span className="text-white font-medium">{kusdBalanceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -419,7 +419,8 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
   const collateral = Number(formatWAD(vault.collateral))
   const collateralValue = Number(formatWAD(vault.collateralValue))
   const debt = Number(formatWAD(vault.totalDebt))
-  const healthFactor = Number(formatRAY(vault.healthFactor))
+  // healthFactor is in WAD (from wadDiv of RAY/RAY), not RAY
+  const healthFactor = Number(formatWAD(vault.healthFactor))
   const liquidationPrice = Number(formatWAD(vault.liquidationPrice))
   const collateralRatio = Number(formatRAY(vault.collateralRatio)) * 100
 

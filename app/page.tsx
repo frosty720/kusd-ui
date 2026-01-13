@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useChainId } from 'wagmi'
 import { useVat, usePot } from '@/hooks'
-import { formatRAD, formatRAY } from '@/lib'
+import { formatRAD, formatRAY, formatWAD } from '@/lib'
 
 export default function Home() {
   const chainId = useChainId()
@@ -21,7 +21,7 @@ export default function Home() {
 
   // Calculate stats
   const kusdSupply = totalDebt && typeof totalDebt === 'bigint' ? Number(formatRAD(totalDebt)) : 0
-  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint' ? Number(formatRAD(potTotalPie)) : 0
+  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint' ? Number(formatWAD(potTotalPie)) : 0
 
   // Calculate DSR APY (dsr is per-second rate in RAY format)
   // APY = (rate^seconds_per_year - 1) * 100
