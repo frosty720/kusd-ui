@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import Navigation from '@/components/Navigation'
 import { usePot, useVat, useKusdJoin, useTokenBalance, useTokenAllowance, useApproveToken, useDSProxy } from '@/hooks'
+import { useDsrEarnings } from '@/hooks/subgraph/useDsrEarnings'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAY, parseWAD, formatCurrency } from '@/lib'
@@ -91,6 +92,13 @@ export default function DSRPage() {
 
   // Calculate user's KUSD in DSR (pie * chi)
   const userKusdInDSR = (userPieAmount * chiValue) / 10n ** 27n // WAD
+
+  // Earnings (mainnet only) = current balance − net principal deposited. The
+  // principal comes from the subgraph (chi-at-deposit history is not on-chain).
+  const { data: dsrEarningsData, isSubgraphAvailable: dsrSgAvailable } = useDsrEarnings(proxyAddress)
+  const dsrPrincipal = dsrEarningsData && dsrEarningsData.dsrPosition ? BigInt(dsrEarningsData.dsrPosition.principal) : 0n
+  const dsrEarnings = userKusdInDSR > dsrPrincipal ? userKusdInDSR - dsrPrincipal : 0n
+  const hasDsrPosition = !!(dsrEarningsData && dsrEarningsData.dsrPosition)
 
   // Calculate total KUSD in Pot
   const totalKusdInPot = (totalPieAmount * chiValue) / 10n ** 27n // WAD
@@ -376,9 +384,11 @@ export default function DSRPage() {
               <div className="text-[#6b7280] text-xs mt-1">KUSD</div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
-              <div className="text-[#6b7280] text-sm mb-1">Current APY</div>
-              <div className="text-3xl font-bold text-[#FBBF24]">{dsrAPR.toFixed(2)}%</div>
-              <div className="text-[#6b7280] text-xs mt-1">Annual Rate</div>
+              <div className="text-[#6b7280] text-sm mb-1">Earnings to date</div>
+              <div className="text-3xl font-bold text-[#22C55E]">
+                {dsrSgAvailable ? (hasDsrPosition ? '+' + formatWAD(dsrEarnings, 4) : '0.0000') : '—'}
+              </div>
+              <div className="text-[#6b7280] text-xs mt-1">{dsrSgAvailable ? 'KUSD interest accrued' : 'mainnet only'}</div>
             </div>
           </div>
 

@@ -75,6 +75,8 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs deci
   - **Docs updated:** workspace `/home/dude/KalyChain/CLAUDE.md` testnet KUSD corrected `0xd15F… → 0x6c52…` (with a note that `0xd15F…` is an older deployment — do not use).
 
 
+- **`NEXT_PUBLIC_DEX_PAIR_ADDRESS` is a single mainnet V2 pair, not chain-keyed.** Used by `useDexPair`/`useKusdPrice` (`hooks/contracts/useDexPair.ts`) to read the KalySwap KUSD/USDC **Uniswap V2** pair reserves and show the live KUSD market price + peg deviation on the **Dashboard** and **Admin** pages (display-only, not in any tx path). Because it's a single mainnet address applied regardless of chain, the peg indicator reads null/"loading" on **testnet** (no such pair there), same class as the mainnet PSM/multicall `.env` values. To fix: make it chain-keyed (like `getContracts`) with a testnet KUSD/USDC pair. **Bigger opportunity:** KalySwap now has **V3 pools** — the peg price should move to a V3 pool read (slot0/sqrtPriceX96) rather than V2 `getReserves`. Ties into the upcoming keeper / market-maker bot work for KUSD pairs. Not fixing now — flagged for that track.
+
 - **wKLC mainnet address in `SUPPORTED_TOKENS`** — RESOLVED: confirmed identical on mainnet and testnet; leaving as-is.
 - **Mint under-draws by a rounding wei** (`dart` floored) — safe direction, no fund risk. Leave.
 - **Partial-repay dust** — same rounding, safe direction. Leave (T2 covers full-close only).

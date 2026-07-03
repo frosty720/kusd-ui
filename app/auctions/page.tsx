@@ -5,6 +5,7 @@ import { useAccount, useChainId } from 'wagmi'
 import { formatUnits } from 'viem'
 import Navigation from '@/components/Navigation'
 import { useFlapper, useFlopper, useClipper, useSKLC, useVat } from '@/hooks'
+import { useActiveAuctions } from '@/hooks/subgraph/useActiveAuctions'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAD, formatRAY, parseWAD } from '@/lib'
@@ -123,6 +124,13 @@ export default function AuctionsPage() {
   const totalFlopAuctions = flopKicks ? Number(flopKicks) : 0
   const totalClipAuctions = clipKicks ? Number(clipKicks) : 0
 
+  // Real ACTIVE auction counts from the subgraph (mainnet). On testnet there's no
+  // subgraph, so fall back to the cumulative kick counter (best available there).
+  const { data: sgAuctions, isSubgraphAvailable: auctionsSgAvailable } = useActiveAuctions()
+  const activeFlapCount = auctionsSgAvailable && sgAuctions ? sgAuctions.surplusAuctions.length : totalFlapAuctions
+  const activeFlopCount = auctionsSgAvailable && sgAuctions ? sgAuctions.debtAuctions.length : totalFlopAuctions
+  const activeClipCount = auctionsSgAvailable && sgAuctions ? sgAuctions.clipAuctions.length : totalClipAuctions
+
   // Handlers
   const handleApproveSklcFlapper = () => {
     const maxUint = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
@@ -197,7 +205,7 @@ export default function AuctionsPage() {
             }`}
           >
             <div>Surplus (Flapper)</div>
-            <div className="text-xs mt-1 opacity-75">{totalFlapAuctions} active</div>
+            <div className="text-xs mt-1 opacity-75">{activeFlapCount} active</div>
           </button>
           <button
             onClick={() => setActiveTab('debt')}
@@ -208,7 +216,7 @@ export default function AuctionsPage() {
             }`}
           >
             <div>Debt (Flopper)</div>
-            <div className="text-xs mt-1 opacity-75">{totalFlopAuctions} active</div>
+            <div className="text-xs mt-1 opacity-75">{activeFlopCount} active</div>
           </button>
           <button
             onClick={() => setActiveTab('collateral')}
@@ -219,7 +227,7 @@ export default function AuctionsPage() {
             }`}
           >
             <div>Collateral (Clipper)</div>
-            <div className="text-xs mt-1 opacity-75">{totalClipAuctions} active</div>
+            <div className="text-xs mt-1 opacity-75">{activeClipCount} active</div>
           </button>
         </div>
 
@@ -277,9 +285,9 @@ export default function AuctionsPage() {
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-4">
               <div className="text-[#6b7280] text-sm mb-1">Total Auctions</div>
               <div className="text-white font-bold text-2xl">
-                {activeTab === 'surplus' ? totalFlapAuctions :
-                 activeTab === 'debt' ? totalFlopAuctions :
-                 totalClipAuctions}
+                {activeTab === 'surplus' ? activeFlapCount :
+                 activeTab === 'debt' ? activeFlopCount :
+                 activeClipCount}
               </div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-4">

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useChainId, useAccount, useBalance } from 'wagmi'
 import { useUserPortfolio, type VaultPosition, type DSRPosition, type PortfolioSummary, useVat, usePot, useKusdPrice, useTokenBalance, useOracle } from '@/hooks'
 import { formatWAD, formatRAY, formatRAD } from '@/lib'
+import { useProtocolStats } from '@/hooks/subgraph/useProtocolStats'
 import { RAY } from '@/lib/constants'
 import { MAINNET_CONTRACTS, TESTNET_CONTRACTS } from '@/config/contracts'
 import { formatUnits } from 'viem'
@@ -40,6 +41,9 @@ export default function DashboardPage() {
   const { data: potDsr } = pot.useDsr()
   const { data: potTotalPie } = pot.useTotalPie()
   const { data: potChi } = pot.useChi()
+
+  // Protocol-wide stats from the subgraph (mainnet only).
+  const { data: protocolStats, isSubgraphAvailable: statsSgAvailable } = useProtocolStats()
 
   // Oracle prices
   const wbtcOracle = useOracle(contracts.collateral['WBTC-A'].oracle as `0x${string}`)
@@ -154,6 +158,18 @@ export default function DashboardPage() {
                 <span className="text-[#9ca3af]">Total in Savings</span>
                 <span className="text-white font-medium">{totalInDSR.toLocaleString('en-US', { maximumFractionDigits: 0 })} KUSD</span>
               </div>
+              {statsSgAvailable && protocolStats?.systemState && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ca3af]">Active Vaults</span>
+                    <span className="text-white font-medium">{protocolStats.systemState.activeVaults}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ca3af]">Live Liquidations</span>
+                    <span className="text-white font-medium">{protocolStats.systemState.activeClipAuctions}</span>
+                  </div>
+                </>
+              )}
               <div className="pt-3 border-t border-[#262626]">
                 <div className="flex justify-between text-xs text-[#6b7280]">
                   <span>BTC: ${wbtcPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
