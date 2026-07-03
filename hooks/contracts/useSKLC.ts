@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import sKLCABI from '@/abis/sKLC.json'
 import { getContracts } from '@/config/contracts'
@@ -75,7 +76,8 @@ export function useSKLC(chainId: number) {
         abi: sKLCABI.abi,
         functionName: 'wrap',
         value: amount,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {
@@ -102,7 +104,8 @@ export function useSKLC(chainId: number) {
         abi: sKLCABI.abi,
         functionName: 'unwrap',
         args: [amount],
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {
@@ -129,11 +132,7 @@ export function useSKLC(chainId: number) {
         abi: sKLCABI.abi,
         functionName: 'approve',
         args: [spender, amount],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     
@@ -161,7 +160,8 @@ export function useSKLC(chainId: number) {
         abi: sKLCABI.abi,
         functionName: 'transfer',
         args: [to, amount],
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {

@@ -1,4 +1,5 @@
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { encodeFunctionData } from 'viem'
 
 // Multicall3 standard address (deployed on 250+ chains)
@@ -58,9 +59,8 @@ export const useMulticall3 = () => {
       abi: MULTICALL3_ABI,
       functionName: 'aggregate3',
       args: [calls],
-      gas: 5000000n,
-      gasPrice: 21000000000n,
-    })
+      ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
+    } as any)
   }
 
   return {

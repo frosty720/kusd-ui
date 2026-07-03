@@ -6,6 +6,8 @@ import { useAccount } from 'wagmi'
 import Image from 'next/image'
 import Navigation from '@/components/Navigation'
 import { useVat, useKusdJoin, useSpotter, useOracle, useJug } from '@/hooks'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAD, formatRAY, parseWAD, formatInputValue, formatCurrency, radToWad } from '@/lib'
 import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
 import { type Address } from 'viem'
@@ -58,13 +60,21 @@ export default function MintPage() {
   const { data: jugIlkData } = jug.useIlk(collateralConfig.ilk as `0x${string}`)
 
   // Frob hook for minting KUSD
-  const { frob, isPending, isConfirming, isSuccess, error: frobError } = vat.useFrob()
+  const { frob, hash: frobHash, isPending, isConfirming, isSuccess, error: frobError } = vat.useFrob()
 
   // Exit hook for withdrawing KUSD
-  const { exit, isPending: isExitPending, isConfirming: isExitConfirming, isSuccess: isExitSuccess, error: exitError } = kusdJoin.useExit()
+  const { exit, hash: exitHash, isPending: isExitPending, isConfirming: isExitConfirming, isSuccess: isExitSuccess, error: exitError } = kusdJoin.useExit()
 
   // Hope hook for granting permission to KusdJoin
-  const { hope, isPending: isHopePending, isConfirming: isHopeConfirming, isSuccess: isHopeSuccess } = vat.useHope()
+  const { hope, hash: hopeHash, error: hopeError, isPending: isHopePending, isConfirming: isHopeConfirming, isSuccess: isHopeSuccess } = vat.useHope()
+
+  // Refresh balances/positions the instant any tx confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isSuccess)
+  useRefetchOnTxSuccess(isExitSuccess)
+  useRefetchOnTxSuccess(isHopeSuccess)
+  useTxToast({ isSuccess, hash: frobHash, error: frobError, successMessage: 'KUSD minted', errorMessage: 'Mint failed' })
+  useTxToast({ isSuccess: isExitSuccess, hash: exitHash, error: exitError, successMessage: 'KUSD withdrawn to wallet', errorMessage: 'Withdraw failed' })
+  useTxToast({ isSuccess: isHopeSuccess, hash: hopeHash, error: hopeError, successMessage: 'Permission granted', errorMessage: 'Approval failed' })
 
   // Check if KusdJoin has permission to move user's KUSD
   const { data: canExit } = vat.useCan(address, contracts.core.kusdJoin)
@@ -86,7 +96,7 @@ export default function MintPage() {
   const mat = spotterData ? (spotterData as any)[1] as bigint : 0n // Liquidation ratio (RAY)
 
   // Get oracle price (WAD - 18 decimals)
-  const oraclePrice = oraclePriceData ? BigInt((oraclePriceData as any)[0]) : 0n
+  const oraclePrice = oraclePriceData && (oraclePriceData as any)[1] ? BigInt((oraclePriceData as any)[0]) : 0n
 
   // Calculate total collateral value in USD (WAD)
   // collateralValue = ink (WAD) * oraclePrice (WAD) / 10^18

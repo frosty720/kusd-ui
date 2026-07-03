@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { useAccount, useBalance } from 'wagmi'
 import Navigation from '@/components/Navigation'
 import { useSKLC } from '@/hooks'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, parseWAD, formatInputValue } from '@/lib'
+import { formatUnits } from 'viem'
 
 export default function WrapPage() {
   const [amount, setAmount] = useState('')
@@ -26,12 +29,18 @@ export default function WrapPage() {
   const { data: sklcBalance } = sklc.useBalance(address)
 
   // Wrap and unwrap hooks
-  const { wrap, isPending: isWrapPending, isConfirming: isWrapConfirming, isSuccess: isWrapSuccess } = sklc.useWrap()
-  const { unwrap, isPending: isUnwrapPending, isConfirming: isUnwrapConfirming, isSuccess: isUnwrapSuccess } = sklc.useUnwrap()
+  const { wrap, hash: wrapHash, error: wrapError, isPending: isWrapPending, isConfirming: isWrapConfirming, isSuccess: isWrapSuccess } = sklc.useWrap()
+  const { unwrap, hash: unwrapHash, error: unwrapError, isPending: isUnwrapPending, isConfirming: isUnwrapConfirming, isSuccess: isUnwrapSuccess } = sklc.useUnwrap()
 
   const isPending = isWrapPending || isUnwrapPending
   const isConfirming = isWrapConfirming || isUnwrapConfirming
   const isSuccess = isWrapSuccess || isUnwrapSuccess
+
+  // Refresh balances the instant a tx confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isWrapSuccess)
+  useRefetchOnTxSuccess(isUnwrapSuccess)
+  useTxToast({ isSuccess: isWrapSuccess, hash: wrapHash, error: wrapError, successMessage: 'Wrapped KLC → sKLC', errorMessage: 'Wrap failed' })
+  useTxToast({ isSuccess: isUnwrapSuccess, hash: unwrapHash, error: unwrapError, successMessage: 'Unwrapped sKLC → KLC', errorMessage: 'Unwrap failed' })
 
   // Reset form on success
   useEffect(() => {
@@ -83,9 +92,9 @@ export default function WrapPage() {
       // Leave a small amount for gas (0.01 KLC)
       const gasReserve = parseWAD('0.01')
       const maxAmount = klcBalance.value > gasReserve ? klcBalance.value - gasReserve : 0n
-      setAmount(formatWAD(maxAmount, 6))
+      setAmount(formatUnits(maxAmount, 18))
     } else if (!isWrapping && sklcBalance && typeof sklcBalance === 'bigint') {
-      setAmount(formatWAD(sklcBalance, 6))
+      setAmount(formatUnits(sklcBalance, 18))
     }
   }
 

@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import PotABI from '@/abis/Pot.json'
 import { getContracts } from '@/config/contracts'
@@ -105,9 +106,8 @@ export function usePot(chainId: number) {
         address: potAddress,
         abi: PotABI.abi,
         functionName: 'drip',
-        gas: 5000000n, // Increased from 3M to 5M
-        gasPrice: 21000000000n,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
+      } as any)
     }
 
     return {
@@ -134,9 +134,8 @@ export function usePot(chainId: number) {
         abi: PotABI.abi,
         functionName: 'join',
         args: [amount],
-        gas: 5000000n, // Increased from 3M to 5M
-        gasPrice: 21000000000n,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
+      } as any)
     }
 
     return {
@@ -163,9 +162,8 @@ export function usePot(chainId: number) {
         abi: PotABI.abi,
         functionName: 'exit',
         args: [amount],
-        gas: 5000000n, // Increased from 3M to 5M
-        gasPrice: 21000000000n,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
+      } as any)
     }
 
     return {
@@ -192,9 +190,8 @@ export function usePot(chainId: number) {
         abi: PotABI.abi,
         functionName: 'exit',
         args: [2n ** 256n - 1n], // Max uint256 to exit all
-        gas: 5000000n, // Increased from 3M to 5M
-        gasPrice: 21000000000n,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
+      } as any)
     }
 
     return {

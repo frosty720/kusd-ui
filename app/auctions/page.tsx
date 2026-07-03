@@ -5,7 +5,9 @@ import { useAccount, useChainId } from 'wagmi'
 import { formatUnits } from 'viem'
 import Navigation from '@/components/Navigation'
 import { useFlapper, useFlopper, useClipper, useSKLC, useVat } from '@/hooks'
-import { formatWAD, formatRAD, parseWAD } from '@/lib'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
+import { formatWAD, formatRAD, formatRAY, parseWAD } from '@/lib'
 import { type CollateralType } from '@/config/contracts'
 
 type AuctionType = 'surplus' | 'debt' | 'collateral'
@@ -78,24 +80,39 @@ export default function AuctionsPage() {
   // Vat (for KUSD balance and approvals)
   const vat = useVat(chainId || 3889)
   const { data: vatKusd } = vat.useKusd(address)
-  const { data: vatCanFlapper } = vat.useCan(address, flapper.address)
+  const { data: vatCanFlopper } = vat.useCan(address, flopper.address)
   const { data: vatCanClipper } = vat.useCan(address, clipper.address)
 
   // Fetch most recent auction for each type
   const { data: latestFlapBid } = flapper.useBid(typeof flapKicks === 'bigint' && flapKicks > 0n ? flapKicks : undefined)
   const { data: latestFlopBid } = flopper.useBid(typeof flopKicks === 'bigint' && flopKicks > 0n ? flopKicks : undefined)
   const { data: latestClipSale } = clipper.useSale(typeof clipKicks === 'bigint' && clipKicks > 0n ? clipKicks : undefined)
+  // Current Dutch-auction price (getStatus → [needsRedo, price(RAY), lot, tab])
+  const { data: latestClipStatus } = clipper.useStatus(typeof clipKicks === 'bigint' && clipKicks > 0n ? clipKicks : undefined)
+  const clipPrice = Array.isArray(latestClipStatus) ? (latestClipStatus[1] as bigint) : 0n
+  // Cap the price we'll pay at current + 1% (industry-standard slippage). In a normal
+  // descending auction the fill is at/below this; it protects against a price 'redo'
+  // spiking the price between read and execution.
+  const clipMaxPrice = (clipPrice * 101n) / 100n
 
   // Approval hooks
   const { approve: approveSklcFlapper, isPending: isApprovingSklcFlapper } = sklc.useApprove()
   const { approve: approveSklcFlopper, isPending: isApprovingSklcFlopper } = sklc.useApprove()
-  const { hope: hopeFlapper, isPending: isHopingFlapper } = vat.useHope()
+  const { hope: hopeFlopper, isPending: isHopingFlopper } = vat.useHope()
   const { hope: hopeClipper, isPending: isHopingClipper } = vat.useHope()
 
   // Bidding hooks
-  const { tend, isPending: isTendPending, isConfirming: isTendConfirming, isSuccess: isTendSuccess } = flapper.useTend()
-  const { dent, isPending: isDentPending, isConfirming: isDentConfirming, isSuccess: isDentSuccess } = flopper.useDent()
-  const { take, isPending: isTakePending, isConfirming: isTakeConfirming, isSuccess: isTakeSuccess } = clipper.useTake()
+  const { tend, hash: tendHash, error: tendError, isPending: isTendPending, isConfirming: isTendConfirming, isSuccess: isTendSuccess } = flapper.useTend()
+  const { dent, hash: dentHash, error: dentError, isPending: isDentPending, isConfirming: isDentConfirming, isSuccess: isDentSuccess } = flopper.useDent()
+  const { take, hash: takeHash, error: takeError, isPending: isTakePending, isConfirming: isTakeConfirming, isSuccess: isTakeSuccess } = clipper.useTake()
+
+  // Refresh balances/auctions the instant a bid confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isTendSuccess)
+  useRefetchOnTxSuccess(isDentSuccess)
+  useRefetchOnTxSuccess(isTakeSuccess)
+  useTxToast({ isSuccess: isTendSuccess, hash: tendHash, error: tendError, successMessage: 'Surplus bid placed', errorMessage: 'Bid failed' })
+  useTxToast({ isSuccess: isDentSuccess, hash: dentHash, error: dentError, successMessage: 'Debt bid placed', errorMessage: 'Bid failed' })
+  useTxToast({ isSuccess: isTakeSuccess, hash: takeHash, error: takeError, successMessage: 'Collateral purchased', errorMessage: 'Purchase failed' })
 
   // Deal hooks (claim won auctions)
   const { deal: dealFlapper, isPending: isDealFlapPending } = flapper.useDeal()
@@ -117,8 +134,8 @@ export default function AuctionsPage() {
     approveSklcFlopper(flopper.address, maxUint)
   }
 
-  const handleHopeFlapper = () => {
-    hopeFlapper(flapper.address)
+  const handleHopeFlopper = () => {
+    hopeFlopper(flopper.address)
   }
 
   const handleHopeClipper = () => {
@@ -146,11 +163,12 @@ export default function AuctionsPage() {
   const handleTakeBid = (auctionId: bigint) => {
     const amount = bidAmounts[`clip-${auctionId}`]
     if (!amount || !address) return
+    if (clipPrice === 0n) return // price not loaded yet — don't send an unprotected bid
 
     const amtWad = parseWAD(amount)
-    const maxPrice = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') // Max price
-    console.log('Taking from Clipper:', { auctionId, amt: amtWad, maxPrice, recipient: address })
-    take(auctionId, amtWad, maxPrice, address, '0x')
+    // Price-protected: pay at most the current auction price + 1% slippage.
+    console.log('Taking from Clipper:', { auctionId, amt: amtWad, maxPrice: clipMaxPrice, recipient: address })
+    take(auctionId, amtWad, clipMaxPrice, address, '0x')
   }
 
   return (
@@ -305,7 +323,7 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD Lot</div>
-                        <div className="text-white font-medium">{formatWAD((latestFlapBid as any).lot, 18)} KUSD</div>
+                        <div className="text-white font-medium">{formatRAD((latestFlapBid as any).lot)} KUSD</div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">Current Bid</div>
@@ -386,7 +404,7 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD Bid (Fixed)</div>
-                        <div className="text-white font-medium">{formatWAD((latestFlopBid as any).bid, 18)} KUSD</div>
+                        <div className="text-white font-medium">{formatRAD((latestFlopBid as any).bid)} KUSD</div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">sKLC Lot (Decreasing)</div>
@@ -395,15 +413,15 @@ export default function AuctionsPage() {
                     </div>
 
                     {/* Approval Section */}
-                    {!vatCanFlapper || vatCanFlapper === 0n ? (
+                    {!vatCanFlopper || vatCanFlopper === 0n ? (
                       <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
                         <p className="text-[#FBBF24] text-sm mb-2">You need to approve Vat KUSD spending first</p>
                         <button
-                          onClick={handleHopeFlapper}
-                          disabled={isHopingFlapper}
+                          onClick={handleHopeFlopper}
+                          disabled={isHopingFlopper}
                           className="bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
                         >
-                          {isHopingFlapper ? 'Approving...' : 'Approve Vat KUSD'}
+                          {isHopingFlopper ? 'Approving...' : 'Approve Vat KUSD'}
                         </button>
                       </div>
                     ) : (
@@ -472,6 +490,20 @@ export default function AuctionsPage() {
                       </div>
                     </div>
 
+                    {/* Current Dutch-auction price + slippage-protected max */}
+                    <div className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-3 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#6b7280]">Current Price</span>
+                        <span className="text-[#22C55E] font-medium">
+                          {clipPrice > 0n ? `${formatRAY(clipPrice)} KUSD / ${collateralSymbols[selectedCollateral]}` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-[#6b7280] mt-1">
+                        <span>Max you'll pay (1% slippage)</span>
+                        <span>{clipPrice > 0n ? `${formatRAY(clipMaxPrice)} KUSD / ${collateralSymbols[selectedCollateral]}` : '—'}</span>
+                      </div>
+                    </div>
+
                     {/* Approval Section */}
                     {!vatCanClipper || vatCanClipper === 0n ? (
                       <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
@@ -496,7 +528,7 @@ export default function AuctionsPage() {
                         />
                         <button
                           onClick={() => clipKicks && typeof clipKicks === 'bigint' && handleTakeBid(clipKicks)}
-                          disabled={isTakePending || isTakeConfirming || !bidAmounts[`clip-${clipKicks}`]}
+                          disabled={isTakePending || isTakeConfirming || !bidAmounts[`clip-${clipKicks}`] || clipPrice === 0n}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
                         >
                           {isTakePending ? 'Confirm...' : isTakeConfirming ? 'Buying...' : 'Buy Collateral'}

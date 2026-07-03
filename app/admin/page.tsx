@@ -56,6 +56,7 @@ export default function AdminPage() {
   // Pot data
   const { data: potDsr } = pot.useDsr()
   const { data: potTotalPie } = pot.useTotalPie()
+  const { data: potChi } = pot.useChi()
 
   // End data
   const { data: systemLive } = end.useLive()
@@ -111,8 +112,10 @@ export default function AdminPage() {
     ? Number(formatRAD(totalDebt)) : 0
   const maxDebt = debtCeiling && typeof debtCeiling === 'bigint'
     ? Number(formatRAD(debtCeiling)) : 0
+  // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatWAD(potTotalPie)) : 0
+    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+    : 0
   // Calculate DSR APY: (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
   const SECONDS_PER_YEAR = 31536000

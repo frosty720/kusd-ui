@@ -24,18 +24,3 @@ export function useTokenBalance(
   })
 }
 
-/**
- * Hook for reading native KLC balance
- */
-export function useNativeBalance(userAddress: Address | undefined) {
-  return useReadContract({
-    address: userAddress,
-    abi: [],
-    functionName: 'balance',
-    query: {
-      enabled: !!userAddress,
-      refetchInterval: 10000,
-    },
-  })
-}
-

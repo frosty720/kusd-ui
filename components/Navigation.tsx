@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { WalletButton } from '@/components/WalletButton'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -56,7 +56,7 @@ export default function Navigation() {
 
           {/* Wallet Connect Button */}
           <div className="flex items-center">
-            <ConnectButton />
+            <WalletButton compact />
           </div>
         </div>
 

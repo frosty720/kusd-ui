@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import ClipperABI from '@/abis/Clipper.json'
 import FlapperABI from '@/abis/Flapper.json'
@@ -54,7 +55,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
     return useReadContract({
       address: clipperAddress,
       abi: ClipperABI.abi,
-      functionName: 'status',
+      functionName: 'getStatus',
       args: auctionId !== undefined ? [auctionId] : undefined,
       query: {
         enabled: auctionId !== undefined,
@@ -87,11 +88,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
         abi: ClipperABI.abi,
         functionName: 'take',
         args: [auctionId, amount, maxPrice, recipient, data],
-        type: 'legacy',
-        gas: 5000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
       } as any)
     }
     
@@ -170,11 +167,7 @@ export function useFlapper(chainId: number) {
         abi: FlapperABI.abi,
         functionName: 'tend',
         args: [auctionId, lot, bid],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     
@@ -202,11 +195,7 @@ export function useFlapper(chainId: number) {
         abi: FlapperABI.abi,
         functionName: 'deal',
         args: [auctionId],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     
@@ -284,11 +273,7 @@ export function useFlopper(chainId: number) {
         abi: FlopperABI.abi,
         functionName: 'dent',
         args: [auctionId, lot, bid],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     
@@ -316,11 +301,7 @@ export function useFlopper(chainId: number) {
         abi: FlopperABI.abi,
         functionName: 'deal',
         args: [auctionId],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
 

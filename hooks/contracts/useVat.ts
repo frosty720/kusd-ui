@@ -6,6 +6,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import VatABI from '@/abis/Vat.json'
 import { getContracts } from '@/config/contracts'
@@ -130,11 +131,7 @@ export function useVat(chainId: number) {
         abi: VatABI.abi,
         functionName: 'hope',
         args: [operator],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
 
@@ -162,7 +159,8 @@ export function useVat(chainId: number) {
         abi: VatABI.abi,
         functionName: 'nope',
         args: [operator],
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {
@@ -196,7 +194,8 @@ export function useVat(chainId: number) {
         abi: VatABI.abi,
         functionName: 'frob',
         args: [ilk, u, v, w, dink, dart],
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {

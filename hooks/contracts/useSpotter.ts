@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import SpotterABI from '@/abis/Spotter.json'
 import { getContracts } from '@/config/contracts'
 
@@ -69,7 +70,8 @@ export function useSpotter(chainId: number) {
         abi: SpotterABI.abi,
         functionName: 'poke',
         args: [ilk],
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
     
     return {

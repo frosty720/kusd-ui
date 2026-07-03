@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import Navigation from '@/components/Navigation'
 import { usePot, useVat, useKusdJoin, useTokenBalance, useTokenAllowance, useApproveToken, useDSProxy } from '@/hooks'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAY, parseWAD, formatCurrency } from '@/lib'
 import { getContracts } from '@/config/contracts'
 import { type Address, formatUnits } from 'viem'
@@ -13,7 +15,7 @@ export default function DSRPage() {
   const [depositAmount, setDepositAmount] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [error, setError] = useState('')
-  const [depositStep, setDepositStep] = useState<'idle' | 'buildingProxy' | 'approving' | 'depositing'>('idle')
+  const [depositStep, setDepositStep] = useState<'idle' | 'buildingProxy' | 'approving' | 'depositing' | 'withdrawing'>('idle')
 
   const { address, chainId } = useAccount()
   const contracts = getContracts(chainId || 3889)
@@ -68,10 +70,18 @@ export default function DSRPage() {
   const { data: dsrRate } = pot.useDsr()
 
   // Approve hook for KUSD (approve proxy to spend user's KUSD)
-  const { approve, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
+  const { approve, hash: approveHash, error: approveError, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
 
   // KusdJoin exit hook for withdrawing KUSD from Vat to wallet (for withdrawals)
-  const { exit: kusdJoinExit, isPending: isKusdJoinExitPending, isConfirming: isKusdJoinExitConfirming, isSuccess: isKusdJoinExitSuccess } = kusdJoin.useExit()
+  const { exit: kusdJoinExit, hash: kusdJoinExitHash, error: kusdJoinExitError, isPending: isKusdJoinExitPending, isConfirming: isKusdJoinExitConfirming, isSuccess: isKusdJoinExitSuccess } = kusdJoin.useExit()
+
+  // Refresh balances/positions the instant any tx confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isApproveSuccess)
+  useRefetchOnTxSuccess(isKusdJoinExitSuccess)
+  useRefetchOnTxSuccess(dsProxy.isSuccess)
+  useTxToast({ isSuccess: isApproveSuccess, hash: approveHash, error: approveError, successMessage: 'KUSD approved', errorMessage: 'Approval failed' })
+  useTxToast({ isSuccess: isKusdJoinExitSuccess, hash: kusdJoinExitHash, error: kusdJoinExitError, successMessage: 'KUSD withdrawn to wallet', errorMessage: 'Withdraw failed' })
+  useTxToast({ isSuccess: dsProxy.isSuccess, hash: dsProxy.hash, error: dsProxy.error, successMessage: 'Savings updated', errorMessage: 'Transaction failed' })
 
   // Calculate values
   const userPieAmount = userPie ? (userPie as bigint) : 0n
@@ -236,6 +246,7 @@ export default function DSRPage() {
       const exitAction = dsProxy.encodeExitAction(amountWAD)
       console.log('Exit action encoded:', exitAction)
 
+      setDepositStep('withdrawing')
       dsProxy.executeAction(proxyAddress, exitAction)
       console.log('Withdraw transaction submitted')
     } catch (err) {
@@ -269,6 +280,7 @@ export default function DSRPage() {
       const exitAllAction = dsProxy.encodeExitAllAction()
       console.log('Exit all action encoded:', exitAllAction)
 
+      setDepositStep('withdrawing')
       dsProxy.executeAction(proxyAddress, exitAllAction)
       console.log('Withdraw all transaction submitted')
     } catch (err) {
@@ -310,13 +322,15 @@ export default function DSRPage() {
     }
   }, [dsProxy.isSuccess, depositStep])
 
-  // Reset form on withdraw success
+  // Reset form on withdraw success — gated on the 'withdrawing' step so a stale
+  // dsProxy.isSuccess (e.g. from a prior deposit) can't wipe the input on every keystroke.
   useEffect(() => {
-    if (dsProxy.isSuccess && (depositStep === 'idle' && withdrawAmount)) {
+    if (dsProxy.isSuccess && depositStep === 'withdrawing') {
       setWithdrawAmount('')
       setError('')
+      setDepositStep('idle')
     }
-  }, [dsProxy.isSuccess, depositStep, withdrawAmount])
+  }, [dsProxy.isSuccess, depositStep])
 
   // Handle dsProxy errors
   useEffect(() => {
@@ -332,14 +346,6 @@ export default function DSRPage() {
       setDepositStep('idle')
     }
   }, [dsProxy.error])
-
-  // Reset form on withdraw success
-  useEffect(() => {
-    if (dsProxy.isSuccess && withdrawAmount) {
-      setWithdrawAmount('')
-      setError('')
-    }
-  }, [dsProxy.isSuccess, withdrawAmount])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">

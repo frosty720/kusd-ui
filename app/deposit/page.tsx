@@ -10,7 +10,10 @@ import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import ERC20ABI from '@/abis/ERC20.json'
 import { formatTokenAmount, parseTokenAmount, formatInputValue, formatCurrency, formatWAD, wadToToken } from '@/lib'
 import { getCollateral, type CollateralType } from '@/config/contracts'
-import { type Address } from 'viem'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
+import { type Address, formatUnits } from 'viem'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -65,17 +68,22 @@ export default function DepositPage() {
   const { data: oraclePriceData } = oracle.usePeek()
 
   // Approve and deposit hooks
-  const { approve, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
-  const { join, isPending: isDepositPending, isConfirming: isDepositConfirming, isSuccess: isDepositSuccess } = gemJoin.useJoin()
+  const { approve, hash: approveHash, error: approveError, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
+  const { join, hash: depositHash, error: depositError, isPending: isDepositPending, isConfirming: isDepositConfirming, isSuccess: isDepositSuccess } = gemJoin.useJoin()
 
   // Exit hook to withdraw unlocked collateral
-  const { exit, isPending: isExitPending, isConfirming: isExitConfirming, isSuccess: isExitSuccess } = gemJoin.useExit()
+  const { exit, hash: exitHash, error: exitError, isPending: isExitPending, isConfirming: isExitConfirming, isSuccess: isExitSuccess } = gemJoin.useExit()
 
   // Frob hook to lock collateral in CDP
-  const { frob, isPending: isFrobPending, isConfirming: isFrobConfirming, isSuccess: isFrobSuccess } = vat.useFrob()
+  const { frob, hash: frobHash, error: frobError, isPending: isFrobPending, isConfirming: isFrobConfirming, isSuccess: isFrobSuccess } = vat.useFrob()
 
   // Track the amount that was deposited for the frob call
   const [depositedAmount, setDepositedAmount] = useState<bigint | null>(null)
+  // Guards the post-deposit auto-lock so `frob` fires exactly ONCE per deposit.
+  // `frob` is recreated every render, so it can't gate the effect on its own;
+  // without this guard the lock effect re-runs (and re-broadcasts) for the whole
+  // join→lock window. Mirrors the Borrow page's `repayStep` machine.
+  const [depositStep, setDepositStep] = useState<'idle' | 'depositing' | 'locking'>('idle')
 
   // Mint test tokens hook (only for testnet)
   const { data: mintHash, writeContract: mintTokens, isPending: isMintPending, error: mintError } = useWriteContract()
@@ -85,12 +93,28 @@ export default function DepositPage() {
   const isConfirming = isApproveConfirming || isDepositConfirming
   const isSuccess = isApproveSuccess || isDepositSuccess
 
+  // Refresh balances/positions the instant any tx confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isApproveSuccess)
+  useRefetchOnTxSuccess(isDepositSuccess)
+  useRefetchOnTxSuccess(isFrobSuccess)
+  useRefetchOnTxSuccess(isExitSuccess)
+  useRefetchOnTxSuccess(isMintSuccess)
+  useTxToast({ isSuccess: isApproveSuccess, hash: approveHash, error: approveError, successMessage: 'Token approved', errorMessage: 'Approval failed' })
+  useTxToast({ isSuccess: isDepositSuccess, hash: depositHash, error: depositError, successMessage: 'Collateral deposited', errorMessage: 'Deposit failed' })
+  useTxToast({ isSuccess: isFrobSuccess, hash: frobHash, error: frobError, successMessage: 'Collateral locked in CDP', errorMessage: 'Lock failed' })
+  useTxToast({ isSuccess: isExitSuccess, hash: exitHash, error: exitError, successMessage: 'Collateral withdrawn to wallet', errorMessage: 'Withdraw failed' })
+  useTxToast({ isSuccess: isMintSuccess, hash: mintHash, error: mintError, successMessage: 'Test tokens minted', errorMessage: 'Mint failed' })
+
   // Check if approval is needed
   const needsApproval = !!(allowance !== undefined && typeof allowance === 'bigint' && amount && parseTokenAmount(amount, selectedCollateral.symbol) > allowance)
 
-  // After join succeeds, lock the collateral in CDP with frob
+  // After join succeeds, lock the collateral in CDP with frob.
+  // The `depositStep === 'depositing'` guard plus flipping to 'locking' BEFORE the
+  // call makes this fire exactly once; on subsequent renders the guard is false.
   useEffect(() => {
-    if (isDepositSuccess && depositedAmount && address) {
+    if (depositStep === 'depositing' && isDepositSuccess && depositedAmount && address) {
+      setDepositStep('locking')
+
       // Convert from token decimals to WAD (18 decimals) for frob
       // The Vat stores all collateral in WAD, so dink must be in WAD
       const dinkWAD = collateralConfig.decimals === 18
@@ -107,14 +131,16 @@ export default function DepositPage() {
         0n // dart - no debt change
       )
     }
-  }, [isDepositSuccess, depositedAmount, address, frob, collateralConfig.ilk, collateralConfig.decimals])
+  }, [depositStep, isDepositSuccess, depositedAmount, address, frob, collateralConfig.ilk, collateralConfig.decimals])
 
-  // Reset form on final success
+  // Reset form on final success (covers both the auto-lock above and the manual
+  // "Lock in CDP" button) and re-arm the auto-lock guard for the next deposit.
   useEffect(() => {
     if (isFrobSuccess) {
       setAmount('')
       setError('')
       setDepositedAmount(null)
+      setDepositStep('idle')
     }
   }, [isFrobSuccess])
 
@@ -140,7 +166,8 @@ export default function DepositPage() {
       abi: ERC20ABI.abi,
       functionName: 'mint',
       args: [address, amount],
-    })
+      ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+    } as any)
   }
 
   const handleApprove = () => {
@@ -183,7 +210,8 @@ export default function DepositPage() {
         return
       }
 
-      // Deposit collateral and save amount for frob
+      // Deposit collateral and save amount for the follow-up auto-lock frob
+      setDepositStep('depositing')
       setDepositedAmount(amountInTokenDecimals)
       join(address, amountInTokenDecimals)
     } catch (err) {
@@ -193,7 +221,8 @@ export default function DepositPage() {
 
   const handleMaxClick = () => {
     if (tokenBalance && typeof tokenBalance === 'bigint') {
-      setAmount(formatTokenAmount(tokenBalance, selectedCollateral.symbol, 6))
+      // Exact balance (no float round-trip) so the Max value is always submittable.
+      setAmount(formatUnits(tokenBalance, collateralConfig.decimals))
     }
   }
 
@@ -228,7 +257,7 @@ export default function DepositPage() {
   }
 
   // Get oracle price (WAD - 18 decimals)
-  const oraclePrice = oraclePriceData ? BigInt((oraclePriceData as any)[0]) : 0n
+  const oraclePrice = oraclePriceData && (oraclePriceData as any)[1] ? BigInt((oraclePriceData as any)[0]) : 0n
   const currentPrice = oraclePrice > 0n ? formatWAD(oraclePrice, 2) : '0.00'
 
   // Calculate USD value
@@ -273,7 +302,7 @@ export default function DepositPage() {
       </div>
 
       {/* Unlocked Collateral Warning */}
-      {gemBalance && typeof gemBalance === 'bigint' && gemBalance > 0n && (
+      {typeof gemBalance === 'bigint' && gemBalance > 0n && (
         <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start space-x-2">
@@ -330,7 +359,7 @@ export default function DepositPage() {
           <span>Locked in CDP:</span>
           <span>{formatWAD(lockedBalance, 6)} {selectedCollateral.symbol}</span>
         </div>
-        {gemBalance && typeof gemBalance === 'bigint' && gemBalance > 0n && (
+        {typeof gemBalance === 'bigint' && gemBalance > 0n && (
           <div className="flex justify-between text-yellow-500">
             <span>Unlocked:</span>
             <span>{formatWAD(gemBalance, 6)} {selectedCollateral.symbol}</span>

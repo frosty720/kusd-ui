@@ -18,10 +18,14 @@ export default function Home() {
   const pot = usePot(chainId || 3889)
   const { data: potDsr } = pot.useDsr()
   const { data: potTotalPie } = pot.useTotalPie()
+  const { data: potChi } = pot.useChi()
 
   // Calculate stats
   const kusdSupply = totalDebt && typeof totalDebt === 'bigint' ? Number(formatRAD(totalDebt)) : 0
-  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint' ? Number(formatWAD(potTotalPie)) : 0
+  // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
+  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
+    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+    : 0
 
   // Calculate DSR APY (dsr is per-second rate in RAY format)
   // APY = (rate^seconds_per_year - 1) * 100

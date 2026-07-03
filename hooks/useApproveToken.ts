@@ -7,6 +7,7 @@
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { type Address } from 'viem'
 import ERC20ABI from '@/abis/ERC20.json'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useApproveToken() {
   const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -25,9 +26,8 @@ export function useApproveToken() {
       abi: ERC20ABI.abi,
       functionName: 'approve',
       args: [spenderAddress, amount],
-      gas: 100000n,
-      gasPrice: 21000000000n,
-    })
+      ...getTransactionGasConfigWithOverrides({ gas: 100000n }),
+    } as any)
   }
   
   return {

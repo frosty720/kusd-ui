@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const { data: totalDebt } = vat.useDebt()
   const { data: potDsr } = pot.useDsr()
   const { data: potTotalPie } = pot.useTotalPie()
+  const { data: potChi } = pot.useChi()
 
   // Oracle prices
   const wbtcOracle = useOracle(contracts.collateral['WBTC-A'].oracle as `0x${string}`)
@@ -56,8 +57,10 @@ export default function DashboardPage() {
   const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY
     ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
     : 0
+  // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatWAD(potTotalPie)) : 0
+    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+    : 0
 
   // Format wallet balances
   const klcBalanceNum = klcBalance?.value ? Number(formatUnits(klcBalance.value, 18)) : 0
@@ -268,7 +271,7 @@ function PortfolioSummarySection({
       <SummaryCard
         title="Net Worth"
         value={`$${netWorth.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
-        subtitle={`${walletKusd.toFixed(2)} KUSD in wallet`}
+        subtitle={`${walletKusd.toFixed(2)} KUSD in Vat`}
         icon="💎"
         isLoading={isLoading}
       />
@@ -423,8 +426,11 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
   const healthFactor = Number(formatWAD(vault.healthFactor))
   const liquidationPrice = Number(formatWAD(vault.liquidationPrice))
   const collateralRatio = Number(formatRAY(vault.collateralRatio)) * 100
+  // No debt = safest possible state. The ratio/health sentinels are 0 in that case
+  // (calculateCollateralRatio returns 0n when debt is 0), so render Safe/∞ instead.
+  const noDebt = vault.totalDebt === 0n
 
-  const healthColor = healthFactor >= 2 ? 'text-green-400' : healthFactor >= 1.5 ? 'text-yellow-400' : 'text-red-400'
+  const healthColor = noDebt || healthFactor >= 2 ? 'text-green-400' : healthFactor >= 1.5 ? 'text-yellow-400' : 'text-red-400'
   const healthBg = healthFactor >= 2 ? 'bg-green-500' : healthFactor >= 1.5 ? 'bg-yellow-500' : 'bg-red-500'
   const symbol = vault.collateralType.split('-')[0]
 
@@ -435,7 +441,7 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
           <CollateralIcon symbol={symbol} size={28} />
           <h3 className="text-lg font-bold text-white">{vault.collateralType}</h3>
         </div>
-        <HealthBadge healthFactor={healthFactor} />
+        <HealthBadge healthFactor={healthFactor} noDebt={noDebt} />
       </div>
 
       <div className="space-y-3">
@@ -453,7 +459,7 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-[#9ca3af]">Collateral Ratio</span>
-          <span className={healthColor}>{collateralRatio.toFixed(0)}%</span>
+          <span className={healthColor}>{noDebt ? '∞%' : `${collateralRatio.toFixed(0)}%`}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-[#9ca3af]">Liq. Price</span>
@@ -474,7 +480,15 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
 }
 
 // Health Badge
-function HealthBadge({ healthFactor }: { healthFactor: number }) {
+function HealthBadge({ healthFactor, noDebt = false }: { healthFactor: number; noDebt?: boolean }) {
+  // A vault with no debt is the safest possible state (infinite health).
+  if (noDebt) {
+    return (
+      <span className="px-2 py-1 text-xs font-medium rounded border bg-green-500/20 text-green-400 border-green-500/30">
+        Safe (∞)
+      </span>
+    )
+  }
   const color = healthFactor >= 2 ? 'bg-green-500/20 text-green-400 border-green-500/30'
     : healthFactor >= 1.5 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
     : 'bg-red-500/20 text-red-400 border-red-500/30'

@@ -9,6 +9,7 @@ import { type Address } from 'viem'
 import { useUserPosition } from './useUserPosition'
 import { usePot } from './contracts/usePot'
 import { useVat } from './contracts/useVat'
+import { useDSProxy } from './contracts/useDSProxy'
 import { type CollateralType } from '@/config/contracts'
 import { RAY, TOKEN_DECIMALS } from '@/lib/constants'
 import { formatRAY, formatWAD } from '@/lib/formatting'
@@ -55,9 +56,17 @@ export function useUserPortfolio(chainId: number, userAddress: Address | undefin
   const usdcPosition = useUserPosition(chainId, 'USDC-A', userAddress)
   const daiPosition = useUserPosition(chainId, 'DAI-A', userAddress)
 
-  // DSR data
+  // DSR data — deposits are made through the user's DSProxy, so `pie` is keyed to the
+  // proxy address, not the EOA. Read the proxy's pie (mirrors the DSR page); fall back
+  // to the EOA if no proxy exists yet.
   const pot = usePot(chainId)
-  const { data: userPie, isLoading: pieLoading } = pot.usePie(userAddress)
+  const dsProxy = useDSProxy(chainId)
+  const { data: userProxyAddress } = dsProxy.useHasProxy(userAddress)
+  const hasProxy = userProxyAddress &&
+    userProxyAddress !== '0x0000000000000000000000000000000000000000' &&
+    userProxyAddress !== '0x0'
+  const dsrOwner = hasProxy ? (userProxyAddress as Address) : userAddress
+  const { data: userPie, isLoading: pieLoading } = pot.usePie(dsrOwner)
   const { data: chi, isLoading: chiLoading } = pot.useChi()
   const { data: dsr, isLoading: dsrLoading } = pot.useDsr()
 

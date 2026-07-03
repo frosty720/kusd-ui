@@ -1,4 +1,5 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address, encodeFunctionData } from 'viem'
 import { getContracts } from '@/config/contracts'
 import ProxyRegistryABI from '@/abis/ProxyRegistry.json'
@@ -39,9 +40,8 @@ export function useDSProxy(chainId: number = 3889) {
       abi: ProxyRegistryABI,
       functionName: 'build',
       args: [],
-      gas: 3000000n,
-      gasPrice: 21000000000n,
-    })
+      ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+    } as any)
   }
 
   /**
@@ -64,10 +64,7 @@ export function useDSProxy(chainId: number = 3889) {
       abi: executeAbi ? [executeAbi] : DSProxyABI,
       functionName: 'execute',
       args: [contracts.core.proxyActions, actionData],
-      gas: 5000000n,
-      gasPrice: 21000000000n,
-      maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined,
+      ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
     } as any)
   }
 

@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import KusdJoinABI from '@/abis/KusdJoin.json'
 import { getContracts } from '@/config/contracts'
@@ -53,9 +54,8 @@ export function useKusdJoin(chainId: number) {
         abi: KusdJoinABI.abi,
         functionName: 'join',
         args: [userAddress, amount],
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-      })
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
+      } as any)
     }
 
     return {
@@ -82,10 +82,7 @@ export function useKusdJoin(chainId: number) {
         abi: KusdJoinABI.abi,
         functionName: 'exit',
         args: [userAddress, amount],
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
 

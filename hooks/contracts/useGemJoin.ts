@@ -5,6 +5,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
 import GemJoinABI from '@/abis/GemJoin.json'
 import GemJoin5ABI from '@/abis/GemJoin5.json'
@@ -78,11 +79,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
         abi,
         functionName: 'join',
         args: [userAddress, amount],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     
@@ -116,11 +113,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
         abi,
         functionName: 'exit',
         args: [userAddress, amount],
-        type: 'legacy',
-        gas: 3000000n,
-        gasPrice: 21000000000n,
-        maxFeePerGas: undefined,
-        maxPriorityFeePerGas: undefined,
+        ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
     

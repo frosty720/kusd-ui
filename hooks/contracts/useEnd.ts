@@ -6,6 +6,7 @@
  */
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import EndABI from '@/abis/End.json'
 import { getContracts } from '@/config/contracts'
 
@@ -97,9 +98,7 @@ export function useEnd(chainId: number) {
         abi: EndABI.abi,
         functionName: 'cage',
         args: [],
-        type: 'legacy',
-        gas: 500000n,
-        gasPrice: 21000000000n,
+        ...getTransactionGasConfigWithOverrides({ gas: 500000n }),
       } as any)
     }
 

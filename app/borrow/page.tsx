@@ -5,9 +5,11 @@ import { useAccount } from 'wagmi'
 import Image from 'next/image'
 import Navigation from '@/components/Navigation'
 import { useVat, useKusdJoin, useSpotter, useOracle, useJug, useTokenBalance, useTokenAllowance, useApproveToken } from '@/hooks'
+import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
+import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAD, parseWAD, formatCurrency } from '@/lib'
 import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
-import { type Address } from 'viem'
+import { type Address, formatUnits } from 'viem'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -23,6 +25,10 @@ export default function BorrowPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [error, setError] = useState('')
   const [repayStep, setRepayStep] = useState<'idle' | 'joining' | 'frobbing'>('idle')
+  // True when the user clicked "Max" to repay the FULL debt. A full close must wipe the
+  // entire normalized debt (dart = -art) and join the debt rounded UP (ceil(art*rate)),
+  // otherwise the frob is left a sub-wei short once fees have accrued and reverts.
+  const [repayAll, setRepayAll] = useState(false)
 
   const { address, chainId } = useAccount()
   const selectedCollateral = collateralTypes.find(c => c.type === selectedCollateralType)!
@@ -62,13 +68,21 @@ export default function BorrowPage() {
   const internalKusd = internalKusdRAD ? (internalKusdRAD as bigint) / 10n ** 27n : 0n // Convert RAD to WAD
 
   // Approve hook for KUSD
-  const { approve, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
+  const { approve, hash: approveHash, error: approveError, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
 
   // Frob hook for repaying/withdrawing
-  const { frob, isPending: isFrobPending, isConfirming: isFrobConfirming, isSuccess: isFrobSuccess } = vat.useFrob()
+  const { frob, hash: frobHash, error: frobError, isPending: isFrobPending, isConfirming: isFrobConfirming, isSuccess: isFrobSuccess } = vat.useFrob()
 
   // Join hook for depositing KUSD back to Vat
-  const { join, isPending: isJoinPending, isConfirming: isJoinConfirming, isSuccess: isJoinSuccess } = kusdJoin.useJoin()
+  const { join, hash: joinHash, error: joinError, isPending: isJoinPending, isConfirming: isJoinConfirming, isSuccess: isJoinSuccess } = kusdJoin.useJoin()
+
+  // Refresh balances/positions the instant any tx confirms (no ~10s poll wait)
+  useRefetchOnTxSuccess(isApproveSuccess)
+  useRefetchOnTxSuccess(isFrobSuccess)
+  useRefetchOnTxSuccess(isJoinSuccess)
+  useTxToast({ isSuccess: isApproveSuccess, hash: approveHash, error: approveError, successMessage: 'KUSD approved', errorMessage: 'Approval failed' })
+  useTxToast({ isSuccess: isFrobSuccess, hash: frobHash, error: frobError, successMessage: 'Position updated', errorMessage: 'Transaction failed' })
+  useTxToast({ isSuccess: isJoinSuccess, hash: joinHash, error: joinError, successMessage: 'KUSD deposited to Vat', errorMessage: 'Deposit failed' })
 
   // Calculate values
   const ink = urnData ? (urnData as any)[0] as bigint : 0n // Locked collateral (WAD)
@@ -76,8 +90,9 @@ export default function BorrowPage() {
   const rate = ilkData ? (ilkData as any)[1] as bigint : 10n ** 27n // Accumulated rate (RAY)
   const mat = spotterData ? (spotterData as any)[1] as bigint : 0n // Liquidation ratio (RAY)
 
-  // Get oracle price
-  const oraclePrice = oraclePriceData ? BigInt((oraclePriceData as any)[0]) : 0n
+  // Get oracle price — peek() returns (val, has); only trust val when has is true,
+  // so a stale/unset feed doesn't get used as a live price.
+  const oraclePrice = oraclePriceData && (oraclePriceData as any)[1] ? BigInt((oraclePriceData as any)[0]) : 0n
 
   // Calculate collateral value in USD
   const collateralValue = ink && oraclePrice ? (ink * oraclePrice) / 10n ** 18n : 0n
@@ -116,12 +131,26 @@ export default function BorrowPage() {
     try {
       const amountWAD = parseWAD(repayAmount)
 
-      if (amountWAD > (typeof kusdBalance === 'bigint' ? kusdBalance : 0n)) {
-        setError('Insufficient KUSD balance')
+      // For a full close (Max), join the debt rounded UP to ceil(art*rate / RAY) so the
+      // Vat holds enough internal KUSD to wipe ALL normalized debt; the frob below then
+      // passes dart = -art. Joining the rounded-down display amount would leave the wipe
+      // a sub-wei short and revert once any stability fee has accrued.
+      const RAY = 10n ** 27n
+      const joinAmount = repayAll ? (art * rate + RAY - 1n) / RAY : amountWAD
+
+      const walletKusd = typeof kusdBalance === 'bigint' ? kusdBalance : 0n
+      if (joinAmount > walletKusd) {
+        setError(
+          repayAll
+            ? 'Closing repays your full debt plus its accrued stability fee, so it needs a little more KUSD than you currently hold. Add a bit more KUSD to fully close — or repay a smaller amount to keep the position open.'
+            : 'Insufficient KUSD balance',
+        )
         return
       }
 
-      if (amountWAD > currentDebt) {
+      // A partial repay can't exceed the debt; a full close is allowed to be the
+      // sub-wei-larger ceil amount.
+      if (!repayAll && amountWAD > currentDebt) {
         setError('Amount exceeds current debt')
         return
       }
@@ -135,7 +164,7 @@ export default function BorrowPage() {
       // Start the two-step process
       // Step 1: Join KUSD to Vat (deposit KUSD from wallet to internal balance)
       setRepayStep('joining')
-      join(address, amountWAD)
+      join(address, joinAmount)
 
       // Step 2 will be handled in useEffect when join succeeds
     } catch (err) {
@@ -198,8 +227,11 @@ export default function BorrowPage() {
       // Join succeeded, now call frob to reduce debt
       setRepayStep('frobbing')
 
-      const amountWAD = parseWAD(repayAmount)
-      const dartNormalized = (amountWAD * 10n ** 27n) / rate
+      // Full close: wipe the ENTIRE normalized debt so the vault reaches exactly art = 0.
+      // Partial: convert the repaid amount to normalized debt (floored — safe direction).
+      const dartNormalized = repayAll
+        ? art
+        : (parseWAD(repayAmount) * 10n ** 27n) / rate
 
       frob(
         collateralConfig.ilk as `0x${string}`,
@@ -210,7 +242,7 @@ export default function BorrowPage() {
         -dartNormalized // dart (negative to reduce debt)
       )
     }
-  }, [repayStep, isJoinSuccess, repayAmount, rate, collateralConfig.ilk, address, frob])
+  }, [repayStep, isJoinSuccess, repayAmount, rate, collateralConfig.ilk, address, frob, repayAll, art])
 
   // Reset form on success
   useEffect(() => {
@@ -219,6 +251,7 @@ export default function BorrowPage() {
       setWithdrawAmount('')
       setError('')
       setRepayStep('idle')
+      setRepayAll(false)
     }
   }, [isFrobSuccess, repayStep])
 
@@ -437,7 +470,7 @@ export default function BorrowPage() {
                     <input
                       type="text"
                       value={repayAmount}
-                      onChange={(e) => setRepayAmount(e.target.value)}
+                      onChange={(e) => { setRepayAmount(e.target.value); setRepayAll(false) }}
                       placeholder="0.0"
                       className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#22C55E]"
                     />
@@ -448,7 +481,7 @@ export default function BorrowPage() {
                   <div className="flex justify-between mt-2">
                     <button
                       type="button"
-                      onClick={() => setRepayAmount(formatWAD(currentDebt, 18))}
+                      onClick={() => { setRepayAmount(formatUnits(currentDebt, 18)); setRepayAll(true) }}
                       className="text-sm text-[#22C55E] hover:text-[#10B981]"
                     >
                       Max
@@ -465,6 +498,12 @@ export default function BorrowPage() {
                     </div>
                   </div>
                 </div>
+
+                {currentDebt > 0n && rate > 10n ** 27n && (
+                  <p className="text-xs text-[#6b7280] mb-4">
+                    ℹ️ Fully closing repays your debt <span className="text-[#9ca3af]">plus its accrued stability fee</span> — slightly more than you originally minted.
+                  </p>
+                )}
 
                 <div className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6">
                   <div className="flex justify-between items-center mb-2">
@@ -553,7 +592,7 @@ export default function BorrowPage() {
                   <div className="flex justify-between mt-2">
                     <button
                       type="button"
-                      onClick={() => setWithdrawAmount(formatWAD(maxWithdrawable, 18))}
+                      onClick={() => setWithdrawAmount(formatUnits(maxWithdrawable, 18))}
                       className="text-sm text-[#F59E0B] hover:text-[#FBBF24]"
                     >
                       Max Available
