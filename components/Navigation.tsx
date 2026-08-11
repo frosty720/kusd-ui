@@ -7,6 +7,7 @@ import { WalletButton } from '@/components/WalletButton'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/buy', label: 'Buy KUSD' },
   { href: '/wrap', label: 'Wrap sKLC' },
   { href: '/deposit', label: 'Deposit' },
   { href: '/mint', label: 'Mint KUSD' },
