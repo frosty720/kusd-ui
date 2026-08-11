@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   amountWithinCorridorLimits,
+  buildDepositSource,
   channelTypeLabel,
   countryDisplayName,
+  dedupeNetworksByName,
+  fetchRampQuote,
   isEvmAddress,
   isTerminalDepositState,
   isValidLocalAmount,
+  isValidMomoNumber,
   makeIdempotencyKey,
+  RampApiError,
   sourceAccountTypeFor,
 } from "../ramp";
 
@@ -106,6 +111,106 @@ describe("amountWithinCorridorLimits", () => {
     expect(amountWithinCorridorLimits("abc", { min: null, max: null })).toBe(
       false,
     );
+  });
+});
+
+describe("isValidMomoNumber", () => {
+  it("accepts digit strings with optional + and common separators", () => {
+    expect(isValidMomoNumber("+2348012345678")).toBe(true);
+    expect(isValidMomoNumber("0801 234 5678")).toBe(true);
+    expect(isValidMomoNumber("+237 6XX".replace("6XX", "677889900"))).toBe(
+      true,
+    );
+    expect(isValidMomoNumber("1111111111")).toBe(true); // YC sandbox success number
+  });
+  it("rejects too-short, too-long, and non-numeric input", () => {
+    expect(isValidMomoNumber("12345")).toBe(false);
+    expect(isValidMomoNumber("1".repeat(16))).toBe(false);
+    expect(isValidMomoNumber("call-me-maybe")).toBe(false);
+    expect(isValidMomoNumber("")).toBe(false);
+  });
+});
+
+describe("buildDepositSource", () => {
+  it("builds a bank source with no account details for bank and p2p rails", () => {
+    expect(buildDepositSource("bank")).toEqual({ accountType: "bank" });
+    expect(buildDepositSource("p2p")).toEqual({ accountType: "bank" });
+    // stray momo state left in the form must not leak into a bank source
+    expect(
+      buildDepositSource("bank", { phone: "0801", networkId: "n1" }),
+    ).toEqual({ accountType: "bank" });
+  });
+  it("builds a momo source with normalized payer phone and networkId", () => {
+    expect(
+      buildDepositSource("momo", {
+        phone: "+237 677 (889) 900",
+        networkId: "net-1",
+      }),
+    ).toEqual({
+      accountType: "momo",
+      accountNumber: "+237677889900",
+      networkId: "net-1",
+    });
+  });
+  it("omits networkId when the corridor has no networks to pick", () => {
+    const src = buildDepositSource("momo", { phone: "0801234567" });
+    expect(src).toEqual({ accountType: "momo", accountNumber: "0801234567" });
+    expect("networkId" in src).toBe(false);
+  });
+});
+
+describe("dedupeNetworksByName", () => {
+  it("keeps the first id per case-insensitive operator name (CI lists Wave twice)", () => {
+    const nets = [
+      { id: "a", name: "Wave", accountNumberType: null },
+      { id: "b", name: "Moov", accountNumberType: null },
+      { id: "c", name: "wave ", accountNumberType: null },
+      { id: "d", name: "Moov money", accountNumberType: null },
+    ];
+    expect(dedupeNetworksByName(nets).map((n) => n.id)).toEqual([
+      "a",
+      "b",
+      "d",
+    ]);
+  });
+  it("passes through an already-unique list untouched", () => {
+    const nets = [
+      { id: "a", name: "MTN", accountNumberType: null },
+      { id: "b", name: "Moov", accountNumberType: null },
+    ];
+    expect(dedupeNetworksByName(nets)).toEqual(nets);
+  });
+});
+
+describe("RampApiError vs network failures", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  it("throws RampApiError with the status on a definitive server rejection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "amount_out_of_range" }), {
+            status: 422,
+          }),
+      ),
+    );
+    const err = await fetchRampQuote("NGN", "1").catch((e) => e);
+    expect(err).toBeInstanceOf(RampApiError);
+    expect((err as RampApiError).status).toBe(422);
+    expect((err as RampApiError).message).toBe("amount_out_of_range");
+  });
+  it("lets network failures propagate as plain errors (outcome unknown)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }),
+    );
+    const err = await fetchRampQuote("NGN", "1").catch((e) => e);
+    expect(err).toBeInstanceOf(TypeError);
+    expect(err).not.toBeInstanceOf(RampApiError);
   });
 });
 

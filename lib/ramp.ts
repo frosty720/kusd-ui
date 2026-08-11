@@ -104,6 +104,47 @@ export function sourceAccountTypeFor(
   return channelType === "momo" ? "momo" : "bank";
 }
 
+/**
+ * Build the deposit `source` for a corridor. Yellow Card requires the payer's
+ * mobile-money phone number (`accountNumber`) and the momo `networkId` for
+ * momo receives; bank/p2p receives need neither in production.
+ */
+export function buildDepositSource(
+  channelType: RampCorridor["channelType"],
+  momo: { phone?: string; networkId?: string } = {},
+): CreateRampDepositInput["source"] {
+  if (channelType === "momo") {
+    return {
+      accountType: sourceAccountTypeFor(channelType),
+      accountNumber: (momo.phone ?? "").replace(/[\s()-]/g, ""),
+      ...(momo.networkId ? { networkId: momo.networkId } : {}),
+    };
+  }
+  return { accountType: sourceAccountTypeFor(channelType) };
+}
+
+/** Loose payer-phone check for momo deposits (digits, optional +, 6-15 long). */
+export function isValidMomoNumber(value: string): boolean {
+  return /^\+?\d{6,15}$/.test(value.replace(/[\s()-]/g, ""));
+}
+
+/**
+ * Operator list for display: Yellow Card sometimes returns the same operator
+ * name twice under different network ids (e.g. CI lists "Wave" twice) — keep
+ * the first id per case-insensitive name so the dropdown reads cleanly.
+ */
+export function dedupeNetworksByName(
+  networks: RampCorridorNetwork[],
+): RampCorridorNetwork[] {
+  const seen = new Set<string>();
+  return networks.filter((n) => {
+    const key = n.name.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** Human label for a corridor's payment rail (p2p is a bank transfer to the user). */
 export function channelTypeLabel(
   channelType: RampCorridor["channelType"],
@@ -174,12 +215,28 @@ export function isTerminalDepositState(state: string): boolean {
 
 // ── Browser client for /api/ramp/* ──────────────────────────────────────────
 
+/**
+ * A definitive answer from the server that is an error (4xx/5xx with a body).
+ * Distinguished from network failures (fetch rejects with a plain TypeError)
+ * so callers can tell "the server rejected this" from "the outcome is
+ * unknown" — the idempotency-key retry logic on /buy depends on that split.
+ */
+export class RampApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "RampApiError";
+  }
+}
+
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg =
       (body as { error?: string }).error || `request failed (${res.status})`;
-    throw new Error(msg);
+    throw new RampApiError(res.status, msg);
   }
   return body as T;
 }
