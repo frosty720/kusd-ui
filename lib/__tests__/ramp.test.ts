@@ -7,9 +7,9 @@ import {
   dedupeNetworksByName,
   fetchRampQuote,
   isEvmAddress,
+  isInternationalPhone,
   isTerminalDepositState,
   isValidLocalAmount,
-  isValidMomoNumber,
   makeIdempotencyKey,
   RampApiError,
   sourceAccountTypeFor,
@@ -114,20 +114,21 @@ describe("amountWithinCorridorLimits", () => {
   });
 });
 
-describe("isValidMomoNumber", () => {
-  it("accepts digit strings with optional + and common separators", () => {
-    expect(isValidMomoNumber("+2348012345678")).toBe(true);
-    expect(isValidMomoNumber("0801 234 5678")).toBe(true);
-    expect(isValidMomoNumber("+237 6XX".replace("6XX", "677889900"))).toBe(
-      true,
-    );
-    expect(isValidMomoNumber("1111111111")).toBe(true); // YC sandbox success number
+describe("isInternationalPhone", () => {
+  it("accepts + international numbers with common separators", () => {
+    expect(isInternationalPhone("+2348012345678")).toBe(true);
+    expect(isInternationalPhone("+225 05 56 41 80 73")).toBe(true);
+    expect(isInternationalPhone("+237 677-889-900")).toBe(true);
+  });
+  it("REJECTS local formats — YC hard-rejects them (prod 2026-08-11)", () => {
+    expect(isInternationalPhone("0556418073")).toBe(false);
+    expect(isInternationalPhone("0801 234 5678")).toBe(false);
   });
   it("rejects too-short, too-long, and non-numeric input", () => {
-    expect(isValidMomoNumber("12345")).toBe(false);
-    expect(isValidMomoNumber("1".repeat(16))).toBe(false);
-    expect(isValidMomoNumber("call-me-maybe")).toBe(false);
-    expect(isValidMomoNumber("")).toBe(false);
+    expect(isInternationalPhone("+12345")).toBe(false);
+    expect(isInternationalPhone(`+${"1".repeat(16)}`)).toBe(false);
+    expect(isInternationalPhone("call-me-maybe")).toBe(false);
+    expect(isInternationalPhone("")).toBe(false);
   });
 });
 
@@ -186,7 +187,7 @@ describe("RampApiError vs network failures", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
-  it("throws RampApiError with the status on a definitive server rejection", async () => {
+  it("throws RampApiError with a human message for known keeper error keys", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -199,7 +200,41 @@ describe("RampApiError vs network failures", () => {
     const err = await fetchRampQuote("NGN", "1").catch((e) => e);
     expect(err).toBeInstanceOf(RampApiError);
     expect((err as RampApiError).status).toBe(422);
-    expect((err as RampApiError).message).toBe("amount_out_of_range");
+    expect((err as RampApiError).message).toBe(
+      "This amount is outside the allowed range for your country.",
+    );
+  });
+  it("prefers Yellow Card's specific code over the keeper's generic 'provider'", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "provider",
+              code: "InvalidPhoneNumberFormat",
+            }),
+            { status: 502 },
+          ),
+      ),
+    );
+    const err = await fetchRampQuote("NGN", "1").catch((e) => e);
+    expect((err as RampApiError).message).toBe(
+      "Phone number must be in international format (e.g. +2250701234567).",
+    );
+  });
+  it("falls back to the raw error key when unmapped", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "mystery_key" }), {
+            status: 400,
+          }),
+      ),
+    );
+    const err = await fetchRampQuote("NGN", "1").catch((e) => e);
+    expect((err as RampApiError).message).toBe("mystery_key");
   });
   it("lets network failures propagate as plain errors (outcome unknown)", async () => {
     vi.stubGlobal(

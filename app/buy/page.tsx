@@ -15,9 +15,9 @@ import {
   fetchRampDeposit,
   fetchRampQuote,
   isEvmAddress,
+  isInternationalPhone,
   isTerminalDepositState,
   isValidLocalAmount,
-  isValidMomoNumber,
   makeIdempotencyKey,
   RampApiError,
   type RampCorridor,
@@ -94,6 +94,29 @@ export default function BuyPage() {
     };
   }, []);
 
+  // Resume an existing deposit from ?deposit=<id> — redirect channels (Wave)
+  // send the customer back here after the hosted payment, and a refresh on
+  // the pay screen must not dump them back onto an empty form.
+  // (window.location instead of useSearchParams: this is client-only state
+  // and avoids the Suspense boundary Next requires for useSearchParams.)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("deposit");
+    if (!id) return;
+    let cancelled = false;
+    fetchRampDeposit(id)
+      .then((d) => {
+        if (cancelled) return;
+        setDeposit(d);
+        setStep(isTerminalDepositState(String(d.state)) ? "done" : "pay");
+      })
+      .catch(() => {
+        // unknown/expired id — leave the fresh form
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Keep the KYC country in sync with the selected corridor.
   useEffect(() => {
     if (corridor) setCustomer((c) => ({ ...c, country: corridor.country }));
@@ -158,11 +181,19 @@ export default function BuyPage() {
     if (!isEvmAddress(userWallet))
       return setError("Enter a valid KalyChain wallet address");
     if (!customer.name.trim()) return setError("Enter your full name");
+    // YC hard-rejects local phone formats (InvalidPhoneNumberFormat) — catch
+    // it here with a clear message instead of a provider error after submit.
+    if (!isInternationalPhone(customer.phone ?? ""))
+      return setError(
+        "Enter your phone in international format, starting with + and country code (e.g. +2250701234567)",
+      );
     if (corridor.channelType === "momo") {
       if (corridor.networks.length > 0 && !momoNetworkId)
         return setError("Select your mobile money operator");
-      if (!isValidMomoNumber(momoPhone))
-        return setError("Enter the mobile money number you will pay from");
+      if (!isInternationalPhone(momoPhone))
+        return setError(
+          "Enter the mobile money number you will pay from in international format (e.g. +2250701234567)",
+        );
     }
     setSubmitting(true);
     // Reuse the attempt's key on retries so a lost response can't open a
@@ -241,7 +272,8 @@ export default function BuyPage() {
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-white mb-4">Buy KUSD</h1>
             <p className="text-[#9ca3af] text-lg">
-              Pay with a local bank transfer and receive KUSD on KalyChain
+              Pay with a local bank transfer/Mobile Money and receive KUSD on
+              KalyChain
             </p>
           </div>
 
@@ -435,7 +467,7 @@ export default function BuyPage() {
                   />
                   <input
                     className={inputClass}
-                    placeholder="Phone (+234…)"
+                    placeholder="Phone — international format (+2250701234567)"
                     value={customer.phone ?? ""}
                     onChange={(e) => setCust({ phone: e.target.value })}
                   />
@@ -504,16 +536,19 @@ export default function BuyPage() {
           {step === "pay" && deposit && (
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-8">
               <h2 className="text-white text-xl font-semibold mb-2">
-                {corridor?.channelType === "momo"
+                {deposit.paymentUrl || corridor?.channelType === "momo"
                   ? "Make your mobile money payment"
                   : "Make your bank transfer"}
               </h2>
               <p className="text-[#9ca3af] text-sm mb-6">
                 Pay exactly{" "}
                 <span className="text-white font-medium">
-                  {localAmount} {corridor?.currency ?? ""}
+                  {deposit.fiatAmount ?? localAmount}{" "}
+                  {deposit.fiatCurrency ?? corridor?.currency ?? ""}
                 </span>{" "}
-                to the account below.
+                {deposit.paymentUrl
+                  ? "using the payment page below — you will be brought back here afterwards."
+                  : "to the account below."}
                 {deposit.expiresAt && (
                   <>
                     {" "}
@@ -522,9 +557,19 @@ export default function BuyPage() {
                   </>
                 )}
               </p>
-              <pre className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6 overflow-x-auto text-xs text-[#9ca3af] font-mono">
-                {JSON.stringify(deposit.bankInfo ?? {}, null, 2)}
-              </pre>
+              {deposit.paymentUrl && (
+                <a
+                  href={deposit.paymentUrl}
+                  className="block w-full text-center bg-[#F59E0B] hover:bg-[#FBBF24] text-white font-semibold py-3 px-4 rounded-lg transition-colors mb-6"
+                >
+                  Open payment page
+                </a>
+              )}
+              {deposit.bankInfo && Object.keys(deposit.bankInfo).length > 0 && (
+                <pre className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6 overflow-x-auto text-xs text-[#9ca3af] font-mono">
+                  {JSON.stringify(deposit.bankInfo, null, 2)}
+                </pre>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <span className="inline-block h-2 w-2 rounded-full bg-[#F59E0B] animate-pulse" />
                 <span className="text-[#6b7280]">Status:</span>
