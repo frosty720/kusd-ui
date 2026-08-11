@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+  // `null` and other non-object payloads parse as valid JSON — reject them
+  // here instead of throwing on the property reads below.
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  }
 
   if (typeof body.userWallet !== "string" || !isEvmAddress(body.userWallet)) {
     return NextResponse.json({ error: "invalid userWallet" }, { status: 400 });

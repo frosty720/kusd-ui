@@ -5,21 +5,24 @@ import { useAccount } from "wagmi";
 import Navigation from "@/components/Navigation";
 import {
   amountWithinCorridorLimits,
+  buildDepositSource,
   COUNTRY_KYC_EXTRAS,
   channelTypeLabel,
   countryDisplayName,
   createRampDeposit,
+  dedupeNetworksByName,
   fetchRampChannels,
   fetchRampDeposit,
   fetchRampQuote,
   isEvmAddress,
   isTerminalDepositState,
   isValidLocalAmount,
+  isValidMomoNumber,
   makeIdempotencyKey,
+  RampApiError,
   type RampCorridor,
   type RampCustomer,
   type RampDeposit,
-  sourceAccountTypeFor,
 } from "@/lib/ramp";
 
 const inputClass =
@@ -30,8 +33,8 @@ const inputClass =
  *
  * Wiring is real (talks to the fiat-bridge-keeper through /api/ramp/*). Flow:
  *   1. form  — corridor + amount + payout wallet + KYC details
- *   2. pay   — show Yellow Card bank details, poll deposit status
- *   3. done  — terminal state (paid_out / expired / failed)
+ *   2. pay   — show Yellow Card payment details, poll deposit status
+ *   3. done  — terminal state (paid / expired / failed_create / manual_review)
  */
 export default function BuyPage() {
   const { address } = useAccount();
@@ -46,6 +49,11 @@ export default function BuyPage() {
   const [corridorsError, setCorridorsError] = useState("");
   const [corridorId, setCorridorId] = useState("");
   const corridor = corridors?.find((c) => c.channelId === corridorId) ?? null;
+  // Operator choices for momo corridors (YC "networks"), deduped for display.
+  const momoOperators =
+    corridor?.channelType === "momo"
+      ? dedupeNetworksByName(corridor.networks)
+      : [];
 
   // form state
   const [localAmount, setLocalAmount] = useState("");
@@ -55,10 +63,19 @@ export default function BuyPage() {
     name: "",
     country: "",
   });
+  // momo corridors need the payer's mobile-money number + network
+  const [momoPhone, setMomoPhone] = useState("");
+  const [momoNetworkId, setMomoNetworkId] = useState("");
 
   // deposit state
   const [deposit, setDeposit] = useState<RampDeposit | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // One idempotency key per purchase attempt: kept across retries whose
+  // outcome is unknown (network errors) so the keeper can dedupe, discarded
+  // once the server answers definitively (success or rejection).
+  const idemKeyRef = useRef<string | null>(null);
+  // Monotonic token so a slow stale quote response can't overwrite a newer one.
+  const quoteSeqRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +97,16 @@ export default function BuyPage() {
   // Keep the KYC country in sync with the selected corridor.
   useEffect(() => {
     if (corridor) setCustomer((c) => ({ ...c, country: corridor.country }));
+  }, [corridor]);
+
+  // Operator options belong to the corridor: reset the pick when the corridor
+  // changes, preselecting when there is only one distinct operator.
+  useEffect(() => {
+    const ops =
+      corridor?.channelType === "momo"
+        ? dedupeNetworksByName(corridor.networks)
+        : [];
+    setMomoNetworkId(ops.length === 1 ? ops[0].id : "");
   }, [corridor]);
 
   // Autofill payout wallet from the connected account (still editable).
@@ -110,10 +137,13 @@ export default function BuyPage() {
       setError(limitsMessage(corridor));
       return;
     }
+    const seq = ++quoteSeqRef.current;
     try {
       const q = await fetchRampQuote(corridor.currency, localAmount);
+      if (seq !== quoteSeqRef.current) return; // stale response — a newer request superseded it
       setPayoutUsd(String(q.payoutUsd ?? ""));
     } catch (e) {
+      if (seq !== quoteSeqRef.current) return;
       setError(e instanceof Error ? e.message : "quote failed");
     }
   }, [corridor, localAmount, limitsMessage]);
@@ -128,33 +158,64 @@ export default function BuyPage() {
     if (!isEvmAddress(userWallet))
       return setError("Enter a valid KalyChain wallet address");
     if (!customer.name.trim()) return setError("Enter your full name");
+    if (corridor.channelType === "momo") {
+      if (corridor.networks.length > 0 && !momoNetworkId)
+        return setError("Select your mobile money operator");
+      if (!isValidMomoNumber(momoPhone))
+        return setError("Enter the mobile money number you will pay from");
+    }
     setSubmitting(true);
+    // Reuse the attempt's key on retries so a lost response can't open a
+    // second Yellow Card receive; the keeper dedupes on it.
+    if (!idemKeyRef.current)
+      idemKeyRef.current = makeIdempotencyKey(userWallet);
     try {
       const d = await createRampDeposit({
-        idempotencyKey: makeIdempotencyKey(userWallet),
+        idempotencyKey: idemKeyRef.current,
         userWallet,
         channelId: corridor.channelId,
         currency: corridor.currency,
         localAmount,
         customer,
-        source: { accountType: sourceAccountTypeFor(corridor.channelType) },
+        source: buildDepositSource(corridor.channelType, {
+          phone: momoPhone,
+          networkId: momoNetworkId,
+        }),
         reason: "other",
       });
+      idemKeyRef.current = null; // consumed — a future purchase gets a fresh key
       setDeposit(d);
       setStep("pay");
     } catch (e) {
+      // A definitive server rejection ends this attempt: replaying its key
+      // would only re-fetch the failed_create row, so the next submit must
+      // start fresh. Network failures keep the key (outcome unknown).
+      if (e instanceof RampApiError) idemKeyRef.current = null;
       setError(e instanceof Error ? e.message : "deposit failed");
     } finally {
       setSubmitting(false);
     }
-  }, [corridor, customer, localAmount, userWallet, limitsMessage]);
+  }, [
+    corridor,
+    customer,
+    localAmount,
+    userWallet,
+    momoPhone,
+    momoNetworkId,
+    limitsMessage,
+  ]);
 
   // Poll deposit status while on the pay screen.
   useEffect(() => {
     if (step !== "pay" || !deposit?.depositId) return;
+    // clearInterval stops future ticks but not a response already in flight —
+    // without this flag a slow poll resolving after the terminal one could
+    // overwrite the final state on the done screen.
+    let cancelled = false;
     pollRef.current = setInterval(async () => {
       try {
         const d = await fetchRampDeposit(deposit.depositId);
+        if (cancelled) return;
         setDeposit(d);
         if (isTerminalDepositState(String(d.state))) setStep("done");
       } catch {
@@ -162,6 +223,7 @@ export default function BuyPage() {
       }
     }, 5000);
     return () => {
+      cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [step, deposit?.depositId]);
@@ -227,6 +289,54 @@ export default function BuyPage() {
                   </p>
                 ) : null}
               </div>
+
+              {/* Operator + payer number (momo corridors only) — the customer
+                  must know which operator the funds go through, so this sits
+                  right under the country pick. */}
+              {corridor?.channelType === "momo" && (
+                <div className="mb-6">
+                  {momoOperators.length > 0 && (
+                    <>
+                      <label
+                        htmlFor="ramp-momo-network"
+                        className="block text-[#9ca3af] text-sm font-medium mb-2"
+                      >
+                        Operator
+                      </label>
+                      <select
+                        id="ramp-momo-network"
+                        className={inputClass}
+                        value={momoNetworkId}
+                        onChange={(e) => setMomoNetworkId(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          Select your mobile money operator
+                        </option>
+                        {momoOperators.map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {n.name}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  <label
+                    htmlFor="ramp-momo-phone"
+                    className={`block text-[#9ca3af] text-sm font-medium mb-2 ${momoOperators.length > 0 ? "mt-3" : ""}`}
+                  >
+                    Mobile money number you will pay from
+                  </label>
+                  <input
+                    id="ramp-momo-phone"
+                    type="text"
+                    inputMode="tel"
+                    value={momoPhone}
+                    onChange={(e) => setMomoPhone(e.target.value)}
+                    placeholder="+237 6XX XXX XXX"
+                    className={inputClass}
+                  />
+                </div>
+              )}
 
               {/* Amount */}
               <div className="mb-6">
@@ -394,7 +504,9 @@ export default function BuyPage() {
           {step === "pay" && deposit && (
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-8">
               <h2 className="text-white text-xl font-semibold mb-2">
-                Make your bank transfer
+                {corridor?.channelType === "momo"
+                  ? "Make your mobile money payment"
+                  : "Make your bank transfer"}
               </h2>
               <p className="text-[#9ca3af] text-sm mb-6">
                 Pay exactly{" "}
