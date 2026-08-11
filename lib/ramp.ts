@@ -32,9 +32,14 @@ export interface RampDeposit {
   depositId: string;
   state: RampDepositState | string;
   payoutUsd?: string;
+  /** The original ask — lets the pay screen render after a ?deposit= resume. */
+  fiatAmount?: string;
+  fiatCurrency?: string;
   /** Bank account details the user must pay into (from Yellow Card). */
   bankInfo?: Record<string, unknown>;
   expiresAt?: string;
+  /** Hosted payment page for redirect channels (e.g. Wave) — user must open it. */
+  paymentUrl?: string | null;
   payoutTxHash?: string;
   [k: string]: unknown;
 }
@@ -123,9 +128,13 @@ export function buildDepositSource(
   return { accountType: sourceAccountTypeFor(channelType) };
 }
 
-/** Loose payer-phone check for momo deposits (digits, optional +, 6-15 long). */
-export function isValidMomoNumber(value: string): boolean {
-  return /^\+?\d{6,15}$/.test(value.replace(/[\s()-]/g, ""));
+/**
+ * Phone check for anything sent to Yellow Card: international format is
+ * MANDATORY — a leading + and 6-15 digits. Local formats like 0556418073 get
+ * a hard InvalidPhoneNumberFormat rejection from YC (seen in prod 2026-08-11).
+ */
+export function isInternationalPhone(value: string): boolean {
+  return /^\+\d{6,15}$/.test(value.replace(/[\s()-]/g, ""));
 }
 
 /**
@@ -231,11 +240,38 @@ export class RampApiError extends Error {
   }
 }
 
+/**
+ * Human messages for the keeper's machine error strings. The keeper's 502
+ * additionally carries Yellow Card's own `code` (e.g. InvalidPhoneNumberFormat)
+ * so provider rejections can be explained instead of showing a bare "provider".
+ */
+export const RAMP_ERROR_MESSAGES: Record<string, string> = {
+  InvalidPhoneNumberFormat:
+    "Phone number must be in international format (e.g. +2250701234567).",
+  PaymentValidationError:
+    "The payment provider rejected these details — please double-check them and try again.",
+  provider:
+    "The payment provider could not process this request. Please try again shortly.",
+  amount_out_of_range:
+    "This amount is outside the allowed range for your country.",
+  fees_exceed_amount: "This amount is too small — fees would exceed it.",
+  paused: "Deposits are temporarily paused. Please try again later.",
+  validation: "Some details are missing or invalid.",
+  not_found: "Deposit not found.",
+};
+
 async function jsonOrThrow<T>(res: Response): Promise<T> {
-  const body = await res.json().catch(() => ({}));
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    code?: string;
+  };
   if (!res.ok) {
+    // Prefer the provider's specific code over the keeper's generic error key.
     const msg =
-      (body as { error?: string }).error || `request failed (${res.status})`;
+      (body.code && RAMP_ERROR_MESSAGES[body.code]) ||
+      (body.error && RAMP_ERROR_MESSAGES[body.error]) ||
+      body.error ||
+      `request failed (${res.status})`;
     throw new RampApiError(res.status, msg);
   }
   return body as T;
