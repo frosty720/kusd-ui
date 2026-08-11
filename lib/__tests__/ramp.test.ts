@@ -5,6 +5,7 @@ import {
   channelTypeLabel,
   countryDisplayName,
   dedupeNetworksByName,
+  fetchRampChannels,
   fetchRampQuote,
   isEvmAddress,
   isInternationalPhone,
@@ -180,6 +181,40 @@ describe("dedupeNetworksByName", () => {
       { id: "b", name: "Moov", accountNumberType: null },
     ];
     expect(dedupeNetworksByName(nets)).toEqual(nets);
+  });
+});
+
+describe("fetchRampChannels", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  it("passes through the keeper's USD policy bounds alongside corridors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              corridors: [],
+              minDepositUsd: "5",
+              maxDepositUsd: "20000",
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const res = await fetchRampChannels();
+    expect(res.corridors).toEqual([]);
+    expect(res.minDepositUsd).toBe("5");
+    expect(res.maxDepositUsd).toBe("20000");
+  });
+  it("defaults corridors to an empty array when absent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })),
+    );
+    const res = await fetchRampChannels();
+    expect(res.corridors).toEqual([]);
   });
 });
 

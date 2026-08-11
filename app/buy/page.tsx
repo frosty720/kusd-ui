@@ -46,6 +46,9 @@ export default function BuyPage() {
   // Corridors come from the keeper (which mirrors Yellow Card's active
   // deposit channels) — nothing country-specific is hardcoded here.
   const [corridors, setCorridors] = useState<RampCorridor[] | null>(null);
+  // Our keeper's USD floor — the binding minimum, shown instead of YC's
+  // (usually far lower) per-channel local minimum.
+  const [minDepositUsd, setMinDepositUsd] = useState<string | null>(null);
   const [corridorsError, setCorridorsError] = useState("");
   const [corridorId, setCorridorId] = useState("");
   const corridor = corridors?.find((c) => c.channelId === corridorId) ?? null;
@@ -80,8 +83,10 @@ export default function BuyPage() {
   useEffect(() => {
     let cancelled = false;
     fetchRampChannels()
-      .then((list) => {
-        if (!cancelled) setCorridors(list);
+      .then((res) => {
+        if (cancelled) return;
+        setCorridors(res.corridors);
+        setMinDepositUsd(res.minDepositUsd ?? null);
       })
       .catch((e) => {
         if (!cancelled)
@@ -164,12 +169,25 @@ export default function BuyPage() {
     try {
       const q = await fetchRampQuote(corridor.currency, localAmount);
       if (seq !== quoteSeqRef.current) return; // stale response — a newer request superseded it
+      // Pre-empt the keeper's $-floor rejection with a clear message while
+      // the user is still on the form.
+      const payoutNum = Number(q.payoutUsd);
+      if (
+        minDepositUsd &&
+        Number.isFinite(payoutNum) &&
+        payoutNum < Number(minDepositUsd)
+      ) {
+        setError(
+          `This amount is about $${payoutNum.toFixed(2)} — the minimum purchase is $${minDepositUsd} (USD equivalent). Please enter a larger amount.`,
+        );
+        return;
+      }
       setPayoutUsd(String(q.payoutUsd ?? ""));
     } catch (e) {
       if (seq !== quoteSeqRef.current) return;
       setError(e instanceof Error ? e.message : "quote failed");
     }
-  }, [corridor, localAmount, limitsMessage]);
+  }, [corridor, localAmount, limitsMessage, minDepositUsd]);
 
   const submit = useCallback(async () => {
     setError("");
@@ -393,17 +411,15 @@ export default function BuyPage() {
                     {corridor?.currency ?? ""}
                   </div>
                 </div>
-                {corridor &&
-                ((corridor.min !== null && corridor.min > 0) ||
-                  (corridor.max !== null && corridor.max > 0)) ? (
+                {corridor ? (
                   <p className="mt-2 text-xs text-[#6b7280]">
-                    {corridor.min !== null && corridor.min > 0
-                      ? `Min ${corridor.min.toLocaleString()} ${corridor.currency}`
+                    {/* OUR floor is the binding minimum — YC's local channel
+                        minimum is usually far below it and misleads users
+                        into a rejected deposit. */}
+                    {minDepositUsd
+                      ? `Min $${minDepositUsd} (USD equivalent)`
                       : ""}
-                    {corridor.min !== null &&
-                    corridor.min > 0 &&
-                    corridor.max !== null &&
-                    corridor.max > 0
+                    {minDepositUsd && corridor.max !== null && corridor.max > 0
                       ? " · "
                       : ""}
                     {corridor.max !== null && corridor.max > 0
@@ -548,7 +564,9 @@ export default function BuyPage() {
                 </span>{" "}
                 {deposit.paymentUrl
                   ? "using the payment page below — you will be brought back here afterwards."
-                  : "to the account below."}
+                  : deposit.bankInfo && Object.keys(deposit.bankInfo).length > 0
+                    ? "to the account below."
+                    : "— approve the payment request your operator sends to your mobile money number."}
                 {deposit.expiresAt && (
                   <>
                     {" "}
@@ -557,18 +575,25 @@ export default function BuyPage() {
                   </>
                 )}
               </p>
-              {deposit.paymentUrl && (
+              {deposit.paymentUrl ? (
+                // Hosted-payment channels (e.g. Wave): the link IS the payment
+                // flow — the raw provider JSON would only duplicate it.
                 <a
                   href={deposit.paymentUrl}
                   className="block w-full text-center bg-[#F59E0B] hover:bg-[#FBBF24] text-white font-semibold py-3 px-4 rounded-lg transition-colors mb-6"
                 >
                   Open payment page
                 </a>
-              )}
-              {deposit.bankInfo && Object.keys(deposit.bankInfo).length > 0 && (
+              ) : deposit.bankInfo &&
+                Object.keys(deposit.bankInfo).length > 0 ? (
                 <pre className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6 overflow-x-auto text-xs text-[#9ca3af] font-mono">
                   {JSON.stringify(deposit.bankInfo, null, 2)}
                 </pre>
+              ) : (
+                <p className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg p-4 mb-6 text-sm text-[#9ca3af]">
+                  Operators like MTN and Moov send an SMS or USSD prompt to your
+                  phone — approve it to complete the payment.
+                </p>
               )}
               <div className="flex items-center gap-2 text-sm">
                 <span className="inline-block h-2 w-2 rounded-full bg-[#F59E0B] animate-pulse" />

@@ -277,11 +277,21 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-export async function fetchRampChannels(): Promise<RampCorridor[]> {
-  const body = await jsonOrThrow<{ corridors?: RampCorridor[] }>(
+export interface RampChannelsResponse {
+  corridors: RampCorridor[];
+  /** The KEEPER's own USD floor/ceiling — the binding limits, often stricter
+   * than YC's per-channel local minimums (CI Wave: 1000 XOF ≈ $1.7 vs $5). */
+  minDepositUsd?: string;
+  maxDepositUsd?: string;
+  cachedAt?: string;
+  stale?: boolean;
+}
+
+export async function fetchRampChannels(): Promise<RampChannelsResponse> {
+  const body = await jsonOrThrow<RampChannelsResponse>(
     await fetch("/api/ramp/channels"),
   );
-  return body.corridors ?? [];
+  return { ...body, corridors: body.corridors ?? [] };
 }
 
 export async function fetchRampQuote(
