@@ -167,7 +167,10 @@ export default function BuyPage() {
     }
     const seq = ++quoteSeqRef.current;
     try {
-      const q = await fetchRampQuote(corridor.currency, localAmount);
+      const q = await fetchRampQuote(corridor.currency, localAmount, {
+        country: corridor.country,
+        channelType: corridor.channelType,
+      });
       if (seq !== quoteSeqRef.current) return; // stale response — a newer request superseded it
       // Pre-empt the keeper's $-floor rejection with a clear message while
       // the user is still on the form.

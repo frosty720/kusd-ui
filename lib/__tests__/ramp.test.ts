@@ -218,6 +218,28 @@ describe("fetchRampChannels", () => {
   });
 });
 
+describe("fetchRampQuote", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  it("sends the corridor context YC's fee config requires (country, channelType)", async () => {
+    const fetchMock = vi.fn(
+      async (_input: string | URL | Request) =>
+        new Response(JSON.stringify({ payoutUsd: "9.8" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRampQuote("XOF", "6000", {
+      country: "CI",
+      channelType: "momo",
+    });
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain("currency=XOF");
+    expect(url).toContain("localAmount=6000");
+    expect(url).toContain("country=CI");
+    expect(url).toContain("channelType=momo");
+  });
+});
+
 describe("RampApiError vs network failures", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -258,18 +280,42 @@ describe("RampApiError vs network failures", () => {
       "Phone number must be in international format (e.g. +2250701234567).",
     );
   });
-  it("falls back to the raw error key when unmapped", async () => {
+  it("wraps unmapped errors in the provider message instead of showing them raw", async () => {
+    // Fastify's default 400 body ({error: "Bad Request"}) reached users
+    // verbatim on 2026-08-12 — unmapped keys must read as a human sentence,
+    // keeping the raw code only as a diagnostic suffix.
     vi.stubGlobal(
       "fetch",
       vi.fn(
         async () =>
-          new Response(JSON.stringify({ error: "mystery_key" }), {
+          new Response(JSON.stringify({ error: "Bad Request" }), {
             status: 400,
           }),
       ),
     );
     const err = await fetchRampQuote("NGN", "1").catch((e) => e);
-    expect((err as RampApiError).message).toBe("mystery_key");
+    expect((err as RampApiError).message).toBe(
+      "The payment provider could not process this request. Please try again shortly. (Bad Request)",
+    );
+  });
+  it("prefers the specific code over the generic error key in the fallback suffix", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "Bad Request",
+              code: "InvalidRequestBody",
+            }),
+            { status: 400 },
+          ),
+      ),
+    );
+    const err = await fetchRampQuote("NGN", "1").catch((e) => e);
+    expect((err as RampApiError).message).toBe(
+      "The payment provider could not process this request. Please try again shortly. (InvalidRequestBody)",
+    );
   });
   it("lets network failures propagate as plain errors (outcome unknown)", async () => {
     vi.stubGlobal(

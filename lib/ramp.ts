@@ -9,8 +9,11 @@
 // ── Types (mirror fiat-bridge-keeper's public API) ──────────────────────────
 
 export interface RampQuote {
-  currency: string;
-  localAmount: string;
+  grossUsd: string;
+  feesUsd: string;
+  netUsd: string;
+  kusd: string;
+  /** Net USD the user would receive — the buy page's estimate + $-floor check. */
   payoutUsd: string;
   [k: string]: unknown;
 }
@@ -267,11 +270,16 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   };
   if (!res.ok) {
     // Prefer the provider's specific code over the keeper's generic error key.
+    // Unmapped keys (e.g. fastify's default "Bad Request" body, seen in prod
+    // 2026-08-12) read as the provider sentence with the raw code kept only
+    // as a diagnostic suffix — never shown bare to the user.
+    const raw = body.code || body.error;
     const msg =
       (body.code && RAMP_ERROR_MESSAGES[body.code]) ||
       (body.error && RAMP_ERROR_MESSAGES[body.error]) ||
-      body.error ||
-      `request failed (${res.status})`;
+      (raw
+        ? `${RAMP_ERROR_MESSAGES.provider} (${raw})`
+        : `request failed (${res.status})`);
     throw new RampApiError(res.status, msg);
   }
   return body as T;
@@ -297,8 +305,13 @@ export async function fetchRampChannels(): Promise<RampChannelsResponse> {
 export async function fetchRampQuote(
   currency: string,
   localAmount: string,
+  // Corridor context for YC's fee config — it requires country + channelType,
+  // so quotes without them fall back to a zero-fee, rates-only estimate.
+  corridor?: { country?: string; channelType?: string },
 ): Promise<RampQuote> {
   const params = new URLSearchParams({ currency, localAmount });
+  if (corridor?.country) params.set("country", corridor.country);
+  if (corridor?.channelType) params.set("channelType", corridor.channelType);
   return jsonOrThrow(await fetch(`/api/ramp/quote?${params}`));
 }
 
