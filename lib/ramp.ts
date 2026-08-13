@@ -141,6 +141,80 @@ export function isInternationalPhone(value: string): boolean {
 }
 
 /**
+ * Dial codes for Yellow Card's operating countries, keyed by ISO 3166 code
+ * (the corridor's `country`). Static telecom facts, like COUNTRY_KYC_EXTRAS —
+ * an unlisted country just skips normalization, it doesn't break the flow.
+ */
+export const COUNTRY_DIAL_CODES: Record<string, string> = {
+  BF: "226",
+  BJ: "229",
+  BW: "267",
+  CD: "243",
+  CG: "242",
+  CI: "225",
+  CM: "237",
+  GA: "241",
+  GH: "233",
+  KE: "254",
+  ML: "223",
+  MW: "265",
+  NE: "227",
+  NG: "234",
+  RW: "250",
+  SN: "221",
+  TG: "228",
+  TZ: "255",
+  UG: "256",
+  ZA: "27",
+  ZM: "260",
+};
+
+/**
+ * Countries whose trunk "0" is dropped in international format (0801… →
+ * +234801…). CI and BJ are deliberately absent: their leading digits became
+ * part of the number in the 2021/2024 renumbering plans (+2250701234567).
+ */
+const TRUNK_ZERO_COUNTRIES = new Set([
+  "NG",
+  "GH",
+  "KE",
+  "UG",
+  "TZ",
+  "RW",
+  "ZM",
+  "MW",
+  "ZA",
+  "CD",
+]);
+
+/**
+ * Best-effort conversion of user phone input to international format for the
+ * selected corridor's country: strips separators, converts a 00 prefix to +,
+ * drops the trunk 0 where applicable, and prepends the dial code to bare
+ * local numbers (BF users type 8-digit numbers — prod report 2026-08-13).
+ * Input it can't confidently fix comes back unchanged (minus separators):
+ * isInternationalPhone stays the single hard gate before Yellow Card.
+ */
+export function normalizePhoneForCountry(raw: string, country: string): string {
+  const cleaned = raw.trim().replace(/[\s()-]/g, "");
+  if (cleaned.startsWith("+")) return cleaned;
+  if (cleaned.startsWith("00")) return `+${cleaned.slice(2)}`;
+  const iso = country.toUpperCase();
+  const dial = COUNTRY_DIAL_CODES[iso];
+  if (!dial || !/^\d+$/.test(cleaned)) return cleaned;
+  // Country code typed without the + — only believable when the digits are
+  // longer than any bare local number that merely starts with the same
+  // digits as the dial code (national numbers here are 7-10 digits).
+  if (cleaned.startsWith(dial) && cleaned.length >= dial.length + 7)
+    return `+${cleaned}`;
+  const local =
+    TRUNK_ZERO_COUNTRIES.has(iso) && cleaned.startsWith("0")
+      ? cleaned.slice(1)
+      : cleaned;
+  return `+${dial}${local}`;
+}
+
+/**
  * Operator list for display: Yellow Card sometimes returns the same operator
  * name twice under different network ids (e.g. CI lists "Wave" twice) — keep
  * the first id per case-insensitive name so the dropdown reads cleanly.
