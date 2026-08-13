@@ -19,6 +19,7 @@ import {
   isTerminalDepositState,
   isValidLocalAmount,
   makeIdempotencyKey,
+  normalizePhoneForCountry,
   RampApiError,
   type RampCorridor,
   type RampCustomer,
@@ -202,20 +203,31 @@ export default function BuyPage() {
     if (!isEvmAddress(userWallet))
       return setError("Enter a valid KalyChain wallet address");
     if (!customer.name.trim()) return setError("Enter your full name");
-    // YC hard-rejects local phone formats (InvalidPhoneNumberFormat) — catch
-    // it here with a clear message instead of a provider error after submit.
-    if (!isInternationalPhone(customer.phone ?? ""))
+    // YC hard-rejects local phone formats (InvalidPhoneNumberFormat) — so
+    // normalize local input to international using the corridor's dial code
+    // (BF users type 8-digit numbers; prod report 2026-08-13) and validate
+    // the normalized value. isInternationalPhone stays the hard gate.
+    const contactPhone = normalizePhoneForCountry(
+      customer.phone ?? "",
+      corridor.country,
+    );
+    if (!isInternationalPhone(contactPhone))
       return setError(
-        "Enter your phone in international format, starting with + and country code (e.g. +2250701234567)",
+        "Enter a valid phone number — your local number or international format (e.g. +2250701234567)",
       );
+    const payerPhone = normalizePhoneForCountry(momoPhone, corridor.country);
     if (corridor.channelType === "momo") {
       if (corridor.networks.length > 0 && !momoNetworkId)
         return setError("Select your mobile money operator");
-      if (!isInternationalPhone(momoPhone))
+      if (!isInternationalPhone(payerPhone))
         return setError(
-          "Enter the mobile money number you will pay from in international format (e.g. +2250701234567)",
+          "Enter a valid mobile money number to pay from — your local number or international format (e.g. +2250701234567)",
         );
     }
+    // Show the numbers as they will be sent, so the user can spot a wrong fix.
+    if (contactPhone !== customer.phone)
+      setCustomer((c) => ({ ...c, phone: contactPhone }));
+    if (payerPhone !== momoPhone) setMomoPhone(payerPhone);
     setSubmitting(true);
     // Reuse the attempt's key on retries so a lost response can't open a
     // second Yellow Card receive; the keeper dedupes on it.
@@ -228,9 +240,11 @@ export default function BuyPage() {
         channelId: corridor.channelId,
         currency: corridor.currency,
         localAmount,
-        customer,
+        // The normalized phones, NOT the raw state — the setState calls above
+        // haven't landed in this closure's `customer`/`momoPhone` yet.
+        customer: { ...customer, phone: contactPhone },
         source: buildDepositSource(corridor.channelType, {
-          phone: momoPhone,
+          phone: payerPhone,
           networkId: momoNetworkId,
         }),
         reason: "other",
@@ -486,7 +500,7 @@ export default function BuyPage() {
                   />
                   <input
                     className={inputClass}
-                    placeholder="Phone — international format (+2250701234567)"
+                    placeholder="Phone — local or international (+2250701234567)"
                     value={customer.phone ?? ""}
                     onChange={(e) => setCust({ phone: e.target.value })}
                   />

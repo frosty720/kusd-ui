@@ -12,6 +12,7 @@ import {
   isTerminalDepositState,
   isValidLocalAmount,
   makeIdempotencyKey,
+  normalizePhoneForCountry,
   RampApiError,
   sourceAccountTypeFor,
 } from "../ramp";
@@ -130,6 +131,59 @@ describe("isInternationalPhone", () => {
     expect(isInternationalPhone(`+${"1".repeat(16)}`)).toBe(false);
     expect(isInternationalPhone("call-me-maybe")).toBe(false);
     expect(isInternationalPhone("")).toBe(false);
+  });
+});
+
+describe("normalizePhoneForCountry", () => {
+  // Prod report 2026-08-13: a Burkina Faso user's valid 8-digit local number
+  // was rejected because the form demanded hand-typed international format.
+  it("prepends the dial code to a bare local number (BF, 8 digits)", () => {
+    expect(normalizePhoneForCountry("70216205", "BF")).toBe("+22670216205");
+  });
+  it("normalized local input passes isInternationalPhone (the BF regression)", () => {
+    expect(
+      isInternationalPhone(normalizePhoneForCountry("70216205", "BF")),
+    ).toBe(true);
+  });
+  it("passes already-international numbers through, stripping separators", () => {
+    expect(normalizePhoneForCountry("+22670216205", "BF")).toBe("+22670216205");
+    expect(normalizePhoneForCountry("+226 70 21 62 05", "BF")).toBe(
+      "+22670216205",
+    );
+  });
+  it("strips separators from local input before prepending", () => {
+    expect(normalizePhoneForCountry("70 21 62 05", "BF")).toBe("+22670216205");
+  });
+  it("converts the 00 international-dialing prefix to +", () => {
+    expect(normalizePhoneForCountry("0022670216205", "BF")).toBe(
+      "+22670216205",
+    );
+  });
+  it("adds only + when the country code was typed without it", () => {
+    expect(normalizePhoneForCountry("22670216205", "BF")).toBe("+22670216205");
+  });
+  it("does NOT mistake a local number starting with the dial digits for a country-coded one", () => {
+    // 22 67 02 16 is a plausible 8-digit BF landline — its first three
+    // digits happen to equal the dial code, but it's far too short to
+    // already contain one.
+    expect(normalizePhoneForCountry("22670216", "BF")).toBe("+22622670216");
+  });
+  it("drops the trunk 0 for countries that omit it internationally (NG)", () => {
+    expect(normalizePhoneForCountry("08012345678", "NG")).toBe(
+      "+2348012345678",
+    );
+  });
+  it("keeps the leading 0 for CI — it became part of the number in 2021", () => {
+    expect(normalizePhoneForCountry("0701234567", "CI")).toBe("+2250701234567");
+  });
+  it("returns input unchanged (minus separators) for unknown countries", () => {
+    // XQ is unassigned in ISO 3166 — no dial code entry. The validator
+    // stays the hard gate; normalization must not guess.
+    expect(normalizePhoneForCountry("70 21 62 05", "XQ")).toBe("70216205");
+  });
+  it("leaves non-numeric and empty input for the validator to reject", () => {
+    expect(normalizePhoneForCountry("abc123", "BF")).toBe("abc123");
+    expect(normalizePhoneForCountry("", "BF")).toBe("");
   });
 });
 
