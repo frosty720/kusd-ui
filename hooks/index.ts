@@ -30,4 +30,5 @@ export * from './contracts/useDexPair'
 // High-level hooks
 export * from './useUserPosition'
 export * from './useUserPortfolio'
+export * from './useProtocolStats'
 

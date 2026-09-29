@@ -3,14 +3,14 @@
 import Navigation from '@/components/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useVat, usePot } from '@/hooks'
-import { formatRAD, formatRAY, formatWAD } from '@/lib'
+import { usePot, useProtocolStats } from '@/hooks'
+import { formatRAY, formatWAD } from '@/lib'
+import { backingLabel } from '@/lib/protocolStats'
 import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 
 export default function Home() {
-  // Vat for total debt
-  const vat = useVat(APP_CHAIN_ID)
-  const { data: totalDebt } = vat.useDebt()
+  // TVL, circulating KUSD and backing %, all read on-chain
+  const stats = useProtocolStats()
 
   // Pot for DSR
   const pot = usePot(APP_CHAIN_ID)
@@ -19,7 +19,6 @@ export default function Home() {
   const { data: potChi } = pot.useChi()
 
   // Calculate stats
-  const kusdSupply = totalDebt && typeof totalDebt === 'bigint' ? Number(formatRAD(totalDebt)) : 0
   // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
   const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
     ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
@@ -34,11 +33,7 @@ export default function Home() {
     ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
     : 0
 
-  // Estimate TVL (assume 150% collateralization on average)
-  const estimatedTVL = kusdSupply * 1.5
-
-  // Calculate global collateral ratio
-  const globalCollateralRatio = kusdSupply > 0 ? (estimatedTVL / kusdSupply) * 100 : 0
+  const usd = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
       <Navigation />
@@ -185,18 +180,18 @@ export default function Home() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
             <StatCard
               title="Total Value Locked"
-              value={`$${estimatedTVL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              change={estimatedTVL > 0 ? "Estimated" : "No deposits"}
+              value={stats ? `$${usd(stats.tvlUsd)}` : '—'}
+              change={!stats ? 'Loading' : stats.unpricedCollateral ? 'Excludes unpriced collateral' : stats.tvlUsd > 0 ? 'PSM reserves + vault collateral' : 'No deposits'}
             />
             <StatCard
               title="KUSD Supply"
-              value={`${kusdSupply.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KUSD`}
+              value={stats ? `${usd(stats.circulatingKusd)} KUSD` : '—'}
               change={totalInDSR > 0 ? `${totalInDSR.toFixed(2)} in DSR` : "No DSR deposits"}
             />
             <StatCard
               title="Collateral Ratio"
-              value={globalCollateralRatio > 0 ? `${globalCollateralRatio.toFixed(0)}%` : "N/A"}
-              change={globalCollateralRatio >= 150 ? "Safe" : globalCollateralRatio > 0 ? "Low" : "No debt"}
+              value={stats?.backingPct != null ? `${stats.backingPct.toFixed(0)}%` : 'N/A'}
+              change={stats ? backingLabel(stats.backingPct) : 'Loading'}
             />
             <StatCard
               title="Savings Rate"
