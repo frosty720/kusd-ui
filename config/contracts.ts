@@ -204,8 +204,8 @@ export const MAINNET_CONTRACTS: NetworkContracts = {
 /**
  * KMT relaunch chain (Chain ID: 3890)
  * KUSD core deployed 2026-08-21, PSM + proxy stack 2026-08-24.
- * PSM-ONLY LAUNCH: all CDP ilk debt ceilings are 0 and no oracles are set (oracle: zero address).
- * CDP/vault pages cannot mint on this chain until ceilings reopen; PSM swap + DSR work.
+ * Launched PSM-only; all five vault types opened 2026-09-29 (KUSD/scripts/kusd-3890-open-vaults-2026-09-29.sh):
+ * each oracle below is the Spotter's pip for its type, ceilings 50k KUSD each, savings rate 1%.
  */
 export const KMT_CONTRACTS: NetworkContracts = {
   core: {
@@ -235,7 +235,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       token: '0xE3f1A8Af16d2Dcd0B6F1F813C449375f85C9d97F',
       join: '0x6badb4a1cb00de3069555191f1e3391b2c58d459',
       clipper: '0x680ab6654a76e0f2db3eeeca42b42516e5a1945f',
-      oracle: '0x0000000000000000000000000000000000000000', // no oracles on 3890 (PSM-only launch)
+      oracle: '0xD387fA875c7fc82900b6b16520117bd5F78922B0', // 3890 kusdOracles, wired to the Spotter 2026-09-29
       ilk: '0x574254432d410000000000000000000000000000000000000000000000000000',
     },
     'WETH-A': {
@@ -245,7 +245,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       token: '0x73b8fBACFF08DafD9a0a6cB8699C64a488d9EA2a',
       join: '0x3ea23f0bb9479d723eb7370befe5368df6ee826c',
       clipper: '0x686911f278e64c31e476169d1ac06e877b211323',
-      oracle: '0x0000000000000000000000000000000000000000',
+      oracle: '0x9f02a8d5B87D72c3890F98E8fD90edA5d2aFD216',
       ilk: '0x574554482d410000000000000000000000000000000000000000000000000000',
     },
     'USDT-A': {
@@ -255,7 +255,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       token: '0x6318EcDbae6B469D39C38949eDC671f4bA8A6172',
       join: '0xcaaac89835a5d7493eda7470b57e4c1517c1921f',
       clipper: '0xd0a1d1b8e10625ee7ed4be4aa7afa7f169411fbd',
-      oracle: '0x0000000000000000000000000000000000000000',
+      oracle: '0xFE6aFb3455428E7B16850Bb6f4B7384938F58684',
       ilk: '0x555344542d410000000000000000000000000000000000000000000000000000',
     },
     'USDC-A': {
@@ -265,7 +265,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       token: '0xf00A4b733093C21b0892eae0578F0a926f9370b3',
       join: '0xf0bbd784d49f3dbe742a39f6d2367fe923ce11cd',
       clipper: '0xfe4a1f892096ef6de5af352cd8f25f7461e9dece',
-      oracle: '0x0000000000000000000000000000000000000000',
+      oracle: '0x0f99cd3976412cA0870Eb8aE1504661f738F7D4b',
       ilk: '0x555344432d410000000000000000000000000000000000000000000000000000',
     },
     'DAI-A': {
@@ -275,7 +275,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       token: '0x8fbff791fCcF596DEf2e788549d0275557F95A21',
       join: '0x421fb81abcd1f9304020e2ede4566584a15f841e',
       clipper: '0x4e7001fa7fecb09407e5570d72b6703a44ea7d48',
-      oracle: '0x0000000000000000000000000000000000000000',
+      oracle: '0xE64C029D54B6a17b78EC4A2072Ab7A839E79E7a4',
       ilk: '0x4441492d41000000000000000000000000000000000000000000000000000000',
     },
   },

@@ -99,6 +99,20 @@ describe('Integration Tests (Live Contracts)', () => {
       console.log('WBTC-A rate:', rate.toString())
       console.log('WBTC-A spot:', spot.toString())
     })
+
+    // The vault pages price collateral from the configured oracle while the Vat uses the Spotter's
+    // pip: if they ever differ, the UI shows one price and the protocol enforces another.
+    it('should configure each vault type with the oracle the Spotter actually uses', async () => {
+      for (const type of ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A'] as const) {
+        const [pip] = await client.readContract({
+          address: contracts.core.spotter,
+          abi: SpotterABI.abi,
+          functionName: 'ilks',
+          args: [contracts.collateral[type].ilk as `0x${string}`],
+        }) as [`0x${string}`, bigint]
+        expect(pip.toLowerCase(), type).toBe(contracts.collateral[type].oracle.toLowerCase())
+      }
+    })
   })
 
   describe('Rate Calculation Verification', () => {

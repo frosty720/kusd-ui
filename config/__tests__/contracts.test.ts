@@ -36,10 +36,14 @@ describe('Contract Configuration', () => {
       expect(KMT_CONTRACTS.collateral['DAI-A'].decimals).toBe(18)
     })
 
-    it('should have zero oracle addresses (PSM-only launch, no oracles on 3890)', () => {
-      for (const type of ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A'] as const) {
-        expect(KMT_CONTRACTS.collateral[type].oracle).toBe('0x0000000000000000000000000000000000000000')
-      }
+    // The vault types opened 2026-09-29 with these oracles as the Spotter pips (kalychain-ops
+    // addresses.json kusdOracles). A zero address here made every price on the vault pages read $0.
+    it('should point each vault type at its 3890 Spotter oracle', () => {
+      expect(KMT_CONTRACTS.collateral['WBTC-A'].oracle).toBe('0xD387fA875c7fc82900b6b16520117bd5F78922B0')
+      expect(KMT_CONTRACTS.collateral['WETH-A'].oracle).toBe('0x9f02a8d5B87D72c3890F98E8fD90edA5d2aFD216')
+      expect(KMT_CONTRACTS.collateral['USDT-A'].oracle).toBe('0xFE6aFb3455428E7B16850Bb6f4B7384938F58684')
+      expect(KMT_CONTRACTS.collateral['USDC-A'].oracle).toBe('0x0f99cd3976412cA0870Eb8aE1504661f738F7D4b')
+      expect(KMT_CONTRACTS.collateral['DAI-A'].oracle).toBe('0xE64C029D54B6a17b78EC4A2072Ab7A839E79E7a4')
     })
 
     it('should use the 3890 warp tokens as collateral tokens', () => {
