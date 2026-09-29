@@ -8,11 +8,13 @@ import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { type Address } from 'viem'
 import ERC20ABI from '@/abis/ERC20.json'
 import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 export function useApproveToken() {
   const { data: hash, writeContract, isPending, error } = useWriteContract()
   
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    chainId: APP_CHAIN_ID,
     hash,
   })
   

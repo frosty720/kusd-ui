@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { formatUnits } from 'viem'
 import Navigation from '@/components/Navigation'
 import { useFlapper, useFlopper, useClipper, useSKLC, useVat } from '@/hooks'
@@ -10,6 +10,7 @@ import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAD, formatRAY, parseWAD } from '@/lib'
 import { type CollateralType } from '@/config/contracts'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 
 type AuctionType = 'surplus' | 'debt' | 'collateral'
 
@@ -52,7 +53,6 @@ const collateralSymbols: Record<CollateralType, string> = {
 
 export default function AuctionsPage() {
   const { address } = useAccount()
-  const chainId = useChainId()
   const [activeTab, setActiveTab] = useState<AuctionType>('collateral')
   const [selectedCollateral, setSelectedCollateral] = useState<CollateralType>('WBTC-A')
   const [flapperAuctions, setFlapperAuctions] = useState<FlapperAuction[]>([])
@@ -61,25 +61,25 @@ export default function AuctionsPage() {
   const [bidAmounts, setBidAmounts] = useState<Record<string, string>>({})
 
   // Flapper (Surplus Auctions)
-  const flapper = useFlapper(chainId || 3889)
+  const flapper = useFlapper(APP_CHAIN_ID)
   const { data: flapKicks } = flapper.useKicks()
 
   // Flopper (Debt Auctions)
-  const flopper = useFlopper(chainId || 3889)
+  const flopper = useFlopper(APP_CHAIN_ID)
   const { data: flopKicks } = flopper.useKicks()
 
   // Clipper (Collateral Auctions)
-  const clipper = useClipper(chainId || 3889, selectedCollateral)
+  const clipper = useClipper(APP_CHAIN_ID, selectedCollateral)
   const { data: clipKicks } = clipper.useKicks()
 
   // sKLC token (for Flapper/Flopper bidding)
-  const sklc = useSKLC(chainId || 3889)
+  const sklc = useSKLC(APP_CHAIN_ID)
   const { data: sklcBalance } = sklc.useBalance(address)
   const { data: sklcAllowanceFlapper } = sklc.useAllowance(address, flapper.address)
   const { data: sklcAllowanceFlopper } = sklc.useAllowance(address, flopper.address)
 
   // Vat (for KUSD balance and approvals)
-  const vat = useVat(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
   const { data: vatKusd } = vat.useKusd(address)
   const { data: vatCanFlopper } = vat.useCan(address, flopper.address)
   const { data: vatCanClipper } = vat.useCan(address, clipper.address)
@@ -237,7 +237,7 @@ export default function AuctionsPage() {
             <div>
               <h3 className="text-white font-semibold mb-2">Surplus Auctions (Flapper)</h3>
               <p className="text-[#9ca3af] text-sm">
-                When the system has excess KUSD, it's auctioned off for sKLC (wrapped KLC). Bid sKLC to buy KUSD at a discount.
+                When the system has excess KUSD, it's auctioned off for sKLC (wrapped {APP_NETWORK.nativeCurrency.symbol}). Bid sKLC to buy KUSD at a discount.
               </p>
             </div>
           )}

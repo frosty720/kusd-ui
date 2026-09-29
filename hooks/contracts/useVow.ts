@@ -20,6 +20,7 @@ export function useVow(chainId: number) {
   // Check if system is live
   const useLive = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'live',
@@ -32,6 +33,7 @@ export function useVow(chainId: number) {
   // Get total queued debt (Sin)
   const useSin = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'Sin',
@@ -44,6 +46,7 @@ export function useVow(chainId: number) {
   // Get total debt being auctioned (Ash)
   const useAsh = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'Ash',
@@ -56,6 +59,7 @@ export function useVow(chainId: number) {
   // Get surplus buffer (hump)
   const useHump = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'hump',
@@ -68,6 +72,7 @@ export function useVow(chainId: number) {
   // Get surplus lot size (bump)
   const useBump = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'bump',
@@ -80,6 +85,7 @@ export function useVow(chainId: number) {
   // Get debt lot size (sump)
   const useSump = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'sump',
@@ -92,6 +98,7 @@ export function useVow(chainId: number) {
   // Get debt auction initial lot (dump)
   const useDump = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'dump',
@@ -104,6 +111,7 @@ export function useVow(chainId: number) {
   // Get debt queue wait time
   const useWait = () => {
     return useReadContract({
+      chainId,
       address: vowAddress,
       abi: VowABI.abi,
       functionName: 'wait',

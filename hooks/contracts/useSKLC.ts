@@ -21,6 +21,7 @@ export function useSKLC(chainId: number) {
   // Get sKLC balance
   const useBalance = (address: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: sklcAddress,
       abi: sKLCABI.abi,
       functionName: 'balanceOf',
@@ -35,6 +36,7 @@ export function useSKLC(chainId: number) {
   // Get total supply
   const useTotalSupply = () => {
     return useReadContract({
+      chainId,
       address: sklcAddress,
       abi: sKLCABI.abi,
       functionName: 'totalSupply',
@@ -47,6 +49,7 @@ export function useSKLC(chainId: number) {
   // Get allowance
   const useAllowance = (owner: Address | undefined, spender: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: sklcAddress,
       abi: sKLCABI.abi,
       functionName: 'allowance',
@@ -67,6 +70,7 @@ export function useSKLC(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -95,6 +99,7 @@ export function useSKLC(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -123,6 +128,7 @@ export function useSKLC(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -151,6 +157,7 @@ export function useSKLC(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     

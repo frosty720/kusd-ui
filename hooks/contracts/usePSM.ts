@@ -7,6 +7,7 @@
 import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
 import KssLitePsmABI from '@/abis/KssLitePsm.json'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 // PSM address from environment
 const PSM_ADDRESS = process.env.NEXT_PUBLIC_PSM_ADDRESS as Address | undefined
@@ -19,6 +20,7 @@ export function usePSM() {
   // Get sell fee (tin) - fee for selling gems (USDC -> KUSD)
   const useTin = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PSM_ADDRESS,
       abi: KssLitePsmABI.abi,
       functionName: 'tin',
@@ -32,6 +34,7 @@ export function usePSM() {
   // Get buy fee (tout) - fee for buying gems (KUSD -> USDC)
   const useTout = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PSM_ADDRESS,
       abi: KssLitePsmABI.abi,
       functionName: 'tout',
@@ -45,6 +48,7 @@ export function usePSM() {
   // Get buffer amount (buf) - pre-minted KUSD buffer
   const useBuf = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PSM_ADDRESS,
       abi: KssLitePsmABI.abi,
       functionName: 'buf',
@@ -58,6 +62,7 @@ export function usePSM() {
   // Get pocket address
   const usePocket = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PSM_ADDRESS,
       abi: KssLitePsmABI.abi,
       functionName: 'pocket',
@@ -70,6 +75,7 @@ export function usePSM() {
   // Get gem (USDC) address
   const useGem = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PSM_ADDRESS,
       abi: KssLitePsmABI.abi,
       functionName: 'gem',

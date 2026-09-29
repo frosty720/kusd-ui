@@ -308,12 +308,21 @@ export function isTerminalDepositState(state: string): boolean {
  * unknown" — the idempotency-key retry logic on /buy depends on that split.
  */
 export class RampApiError extends Error {
+  /**
+   * True when our route could not reach the keeper (504 keeper_unreachable): a deposit may
+   * still have been created, so — like a browser network failure — the outcome is unknown and
+   * the retry must reuse the idempotency key.
+   */
+  public outcomeUnknown: boolean;
+
   constructor(
     public status: number,
     message: string,
+    outcomeUnknown = false,
   ) {
     super(message);
     this.name = "RampApiError";
+    this.outcomeUnknown = outcomeUnknown;
   }
 }
 
@@ -335,6 +344,8 @@ export const RAMP_ERROR_MESSAGES: Record<string, string> = {
   paused: "Deposits are temporarily paused. Please try again later.",
   validation: "Some details are missing or invalid.",
   not_found: "Deposit not found.",
+  keeper_unreachable:
+    "Could not reach the payment service. Please try again — retrying will not create a second payment.",
 };
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
@@ -354,7 +365,7 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
       (raw
         ? `${RAMP_ERROR_MESSAGES.provider} (${raw})`
         : `request failed (${res.status})`);
-    throw new RampApiError(res.status, msg);
+    throw new RampApiError(res.status, msg, body.error === "keeper_unreachable");
   }
   return body as T;
 }

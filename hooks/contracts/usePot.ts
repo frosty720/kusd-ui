@@ -21,6 +21,7 @@ export function usePot(chainId: number) {
   // Get user's DSR deposit (pie)
   const usePie = (user: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'pie',
@@ -35,6 +36,7 @@ export function usePot(chainId: number) {
   // Get total DSR deposits (Pie)
   const useTotalPie = () => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'Pie',
@@ -47,6 +49,7 @@ export function usePot(chainId: number) {
   // Get DSR accumulator (chi)
   const useChi = () => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'chi',
@@ -59,6 +62,7 @@ export function usePot(chainId: number) {
   // Get DSR rate (dsr)
   const useDsr = () => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'dsr',
@@ -71,6 +75,7 @@ export function usePot(chainId: number) {
   // Get last drip timestamp (rho)
   const useRho = () => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'rho',
@@ -83,6 +88,7 @@ export function usePot(chainId: number) {
   // Get vat address
   const useVat = () => {
     return useReadContract({
+      chainId,
       address: potAddress,
       abi: PotABI.abi,
       functionName: 'vat',
@@ -98,6 +104,7 @@ export function usePot(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 
@@ -125,6 +132,7 @@ export function usePot(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 
@@ -153,6 +161,7 @@ export function usePot(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 
@@ -181,6 +190,7 @@ export function usePot(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 

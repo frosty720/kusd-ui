@@ -21,6 +21,7 @@ export function useKusdJoin(chainId: number) {
   // Get the vat address
   const useVat = () => {
     return useReadContract({
+      chainId,
       address: kusdJoinAddress,
       abi: KusdJoinABI.abi,
       functionName: 'vat',
@@ -30,6 +31,7 @@ export function useKusdJoin(chainId: number) {
   // Get the KUSD token address
   const useKusd = () => {
     return useReadContract({
+      chainId,
       address: kusdJoinAddress,
       abi: KusdJoinABI.abi,
       functionName: 'kusd',
@@ -45,6 +47,7 @@ export function useKusdJoin(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 
@@ -73,6 +76,7 @@ export function useKusdJoin(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 

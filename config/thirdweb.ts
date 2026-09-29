@@ -13,7 +13,7 @@
 
 import { createThirdwebClient, defineChain as twDefineChain } from 'thirdweb'
 import { inAppWallet, createWallet } from 'thirdweb/wallets'
-import { kalyChainMainnet, kalyChainTestnet, getCurrentNetwork } from '@/config/networks'
+import { APP_CHAIN_ID, kalyChainKmt, kalyChainMainnet, kalyChainTestnet } from '@/config/networks'
 
 // createThirdwebClient throws on an empty clientId. Fall back to a placeholder so
 // the module never crashes the page before the real key is set; injected wallets
@@ -56,6 +56,15 @@ export const twKalyMainnet = twDefineChain({
   icon: KLC_ICON,
   blockExplorers: [{ name: 'KalyScan', url: 'https://kalyscan.io' }],
 })
+/** The relaunched KalyChain (3890): native KMT, same logo as KalySwap uses for it. */
+export const twKalyKmt = twDefineChain({
+  id: kalyChainKmt.id,
+  name: 'KalyChain',
+  rpc: kalyChainKmt.rpcUrls.default.http[0],
+  nativeCurrency: { name: 'KMT', symbol: 'KMT', decimals: 18 },
+  icon: KLC_ICON,
+  blockExplorers: [{ name: 'KalyScan', url: kalyChainKmt.blockExplorers.default.url }],
+})
 
 /**
  * Tokens shown in the in-app wallet's "View Assets" (keyed by chainId). Native KLC is
@@ -79,11 +88,28 @@ export const SUPPORTED_TOKENS: Record<number, { address: string; name: string; s
     { address: '0x6c52f4afB0f23296D8D1C32485207a1e7c9AA3c3', name: 'KUSD Stablecoin', symbol: 'KUSD', icon: TOK_BASE + 'kusd.png' },
     { address: '0x6Fdb0fEd277b878a0d80494b06EA054C99d2fdD2', name: 'Tether USD', symbol: 'USDT', icon: TOK_BASE + 'usdt.png' },
   ],
+  // 3890 addresses: kalychain-ops/files/kmt-3890/addresses.json (tokens + kusd.core.Kusd)
+  [kalyChainKmt.id]: [
+    { address: '0xf90F0Bd56558Ac12F7FC285571D38181d2feD69b', name: 'Wrapped KMT', symbol: 'wKMT', icon: TOK_BASE + 'klc.png' },
+    { address: '0xFDb3307a16442ed5A7C040AE1600a3B3D3C8e7D9', name: 'KUSD Stablecoin', symbol: 'KUSD', icon: TOK_BASE + 'kusd.png' },
+    { address: '0x6318EcDbae6B469D39C38949eDC671f4bA8A6172', name: 'Tether USD', symbol: 'USDT', icon: TOK_BASE + 'usdt.png' },
+    { address: '0xf00A4b733093C21b0892eae0578F0a926f9370b3', name: 'USD Coin', symbol: 'USDC', icon: TOK_BASE + 'usdc.png' },
+    { address: '0x8fbff791fCcF596DEf2e788549d0275557F95A21', name: 'DAI Token', symbol: 'DAI', icon: TOK_BASE + 'dai.png' },
+    { address: '0xE3f1A8Af16d2Dcd0B6F1F813C449375f85C9d97F', name: 'Wrapped BTC', symbol: 'WBTC', icon: TOK_BASE + 'wbtc.png' },
+    { address: '0x73b8fBACFF08DafD9a0a6cB8699C64a488d9EA2a', name: 'Ether', symbol: 'ETH', icon: TOK_BASE + 'eth.png' },
+  ],
 }
 
-// Default chain the ConnectButton connects to (NEXT_PUBLIC_NETWORK); both are offered.
-export const twActiveChain = getCurrentNetwork().id === kalyChainMainnet.id ? twKalyMainnet : twKalyTestnet
-export const thirdwebChains = [twKalyMainnet, twKalyTestnet]
+/** thirdweb chain per KalyChain id. */
+export const TW_CHAINS = {
+  [kalyChainMainnet.id]: twKalyMainnet,
+  [kalyChainTestnet.id]: twKalyTestnet,
+  [kalyChainKmt.id]: twKalyKmt,
+} as const
+
+// The chain the ConnectButton connects to: the app's chain (NEXT_PUBLIC_NETWORK), the only one offered.
+export const twActiveChain = (TW_CHAINS as Record<number, typeof twKalyKmt>)[APP_CHAIN_ID] ?? twKalyKmt
+export const thirdwebChains = [twActiveChain]
 
 /** In-app wallet: email / social / passkey login. Same auth set as KalySwap. */
 export const kusdInAppWallet = inAppWallet({

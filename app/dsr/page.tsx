@@ -11,6 +11,7 @@ import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAY, parseWAD, formatCurrency } from '@/lib'
 import { getContracts } from '@/config/contracts'
 import { type Address, formatUnits } from 'viem'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 export default function DSRPage() {
   const [depositAmount, setDepositAmount] = useState('')
@@ -18,14 +19,14 @@ export default function DSRPage() {
   const [error, setError] = useState('')
   const [depositStep, setDepositStep] = useState<'idle' | 'buildingProxy' | 'approving' | 'depositing' | 'withdrawing'>('idle')
 
-  const { address, chainId } = useAccount()
-  const contracts = getContracts(chainId || 3889)
+  const { address } = useAccount()
+  const contracts = getContracts(APP_CHAIN_ID)
 
   // Get contract hooks
-  const pot = usePot(chainId || 3889)
-  const vat = useVat(chainId || 3889)
-  const kusdJoin = useKusdJoin(chainId || 3889)
-  const dsProxy = useDSProxy(chainId || 3889)
+  const pot = usePot(APP_CHAIN_ID)
+  const vat = useVat(APP_CHAIN_ID)
+  const kusdJoin = useKusdJoin(APP_CHAIN_ID)
+  const dsProxy = useDSProxy(APP_CHAIN_ID)
 
   // Check if user has a proxy
   const { data: userProxyAddress, refetch: refetchProxy } = dsProxy.useHasProxy(address)

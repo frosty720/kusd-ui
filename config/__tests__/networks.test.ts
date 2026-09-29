@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   kalyChainTestnet,
   kalyChainMainnet,
+  kalyChainKmt,
   NETWORKS,
   DEFAULT_NETWORK,
   getCurrentNetwork,
@@ -37,6 +38,33 @@ describe('Network Configuration', () => {
 
     it('should be marked as testnet', () => {
       expect(kalyChainTestnet.testnet).toBe(true)
+    })
+  })
+
+  describe('kalyChainKmt', () => {
+    it('should have correct chain ID', () => {
+      expect(kalyChainKmt.id).toBe(3890)
+    })
+
+    it('should have KMT as native currency', () => {
+      expect(kalyChainKmt.nativeCurrency.symbol).toBe('KMT')
+      expect(kalyChainKmt.nativeCurrency.decimals).toBe(18)
+    })
+
+    it('should use the 3890 RPC', () => {
+      expect(kalyChainKmt.rpcUrls.default.http).toContain('https://mainrpc.kalychain.io/rpc')
+    })
+
+    it('should link to the 3890 explorer, not the testnet one', () => {
+      expect(kalyChainKmt.blockExplorers.default.url).toBe('https://kalyscan.io')
+    })
+
+    it('should not be marked as testnet', () => {
+      expect(kalyChainKmt.testnet).toBe(false)
+    })
+
+    it('should be reachable via NETWORKS.kmt', () => {
+      expect(NETWORKS.kmt).toBe(kalyChainKmt)
     })
   })
 
@@ -79,8 +107,8 @@ describe('Network Configuration', () => {
   })
 
   describe('DEFAULT_NETWORK', () => {
-    it('should be testnet by default', () => {
-      expect(DEFAULT_NETWORK).toBe(kalyChainTestnet)
+    it('should be the KMT chain (3890), the only live KalyChain', () => {
+      expect(DEFAULT_NETWORK).toBe(kalyChainKmt)
     })
   })
 
@@ -103,6 +131,11 @@ describe('Network Configuration', () => {
     it('should return mainnet when env is mainnet', () => {
       process.env.NEXT_PUBLIC_NETWORK = 'mainnet'
       expect(getCurrentNetwork()).toBe(kalyChainMainnet)
+    })
+
+    it('should return the KMT chain when env is kmt', () => {
+      process.env.NEXT_PUBLIC_NETWORK = 'kmt'
+      expect(getCurrentNetwork()).toBe(kalyChainKmt)
     })
 
     it('should return default network for unknown env', () => {

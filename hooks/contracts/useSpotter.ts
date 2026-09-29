@@ -20,6 +20,7 @@ export function useSpotter(chainId: number) {
   // Get collateral type (ilk) configuration
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
+      chainId,
       address: spotterAddress,
       abi: SpotterABI.abi,
       functionName: 'ilks',
@@ -34,6 +35,7 @@ export function useSpotter(chainId: number) {
   // Get vat address
   const useVat = () => {
     return useReadContract({
+      chainId,
       address: spotterAddress,
       abi: SpotterABI.abi,
       functionName: 'vat',
@@ -43,6 +45,7 @@ export function useSpotter(chainId: number) {
   // Get par (reference price, usually 1 RAY for $1)
   const usePar = () => {
     return useReadContract({
+      chainId,
       address: spotterAddress,
       abi: SpotterABI.abi,
       functionName: 'par',
@@ -61,6 +64,7 @@ export function useSpotter(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     

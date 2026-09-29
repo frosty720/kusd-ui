@@ -1,18 +1,24 @@
 /**
- * KUSD subgraph client (mainnet only).
+ * KUSD subgraph client.
  *
- * The subgraph indexes KalyChain MAINNET (chainId 3888) — there is no testnet
- * graph node — so every query is gated on the connected chain. On testnet (or
- * any other chain) the helpers return null and callers fall back to their
- * existing on-chain reads.
+ * Subgraphs exist for the relaunched KalyChain (3890, `kusd-subgraph-kmt`) and the legacy
+ * mainnet (3888). There is no testnet graph node, so on 3889 (or any other chain) the helpers
+ * return null and callers fall back to their existing on-chain reads.
+ * NEXT_PUBLIC_KUSD_SUBGRAPH_URL overrides the URL for the app's own chain.
  */
 
-import { kalyChainMainnet } from '@/config/networks'
+import { APP_CHAIN_ID, kalyChainKmt, kalyChainMainnet } from '@/config/networks'
+
+const DEFAULT_SUBGRAPH_URLS: Record<number, string> = {
+  [kalyChainKmt.id]: 'https://app.kalyswap.io/subgraphs/name/kusd-subgraph-kmt',
+  [kalyChainMainnet.id]: 'https://app.kalyswap.io/subgraphs/name/kusd-subgraph-kalychain-mainnet',
+}
 
 const SUBGRAPH_URLS: Record<number, string> = {
-  [kalyChainMainnet.id]:
-    process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL ||
-    'https://app.kalyswap.io/subgraphs/name/kusd-subgraph-kalychain-mainnet',
+  ...DEFAULT_SUBGRAPH_URLS,
+  ...(process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL && DEFAULT_SUBGRAPH_URLS[APP_CHAIN_ID]
+    ? { [APP_CHAIN_ID]: process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL }
+    : {}),
 }
 
 export function subgraphUrlFor(chainId: number | undefined): string | null {

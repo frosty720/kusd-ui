@@ -5,21 +5,23 @@ import { getContracts } from '@/config/contracts'
 import ProxyRegistryABI from '@/abis/ProxyRegistry.json'
 import DSProxyABI from '@/abis/DSProxy.json'
 import KssProxyActionsABI from '@/abis/KssProxyActions.json'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 /**
  * Hook for interacting with DSProxy infrastructure
  * Provides functions to check, deploy, and execute actions through user's proxy
  */
-export function useDSProxy(chainId: number = 3889) {
+export function useDSProxy(chainId: number = APP_CHAIN_ID) {
   const contracts = getContracts(chainId)
   const { writeContract, data: hash, error, isPending } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ chainId, hash })
 
   /**
    * Check if user has a proxy deployed
    */
   const useHasProxy = (userAddress: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: contracts.core.proxyRegistry,
       abi: ProxyRegistryABI,
       functionName: 'proxies',

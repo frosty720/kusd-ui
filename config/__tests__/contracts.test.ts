@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import {
   TESTNET_CONTRACTS,
   MAINNET_CONTRACTS,
+  KMT_CONTRACTS,
   getContracts,
   getCollateral,
   getAllCollateralTypes,
@@ -15,6 +16,37 @@ import {
 } from '../contracts'
 
 describe('Contract Configuration', () => {
+  describe('KMT_CONTRACTS (3890)', () => {
+    it('should have valid address format for all core contracts', () => {
+      const addressRegex = /^0x[a-fA-F0-9]{40}$/
+      for (const [, address] of Object.entries(KMT_CONTRACTS.core)) {
+        expect(address).toMatch(addressRegex)
+      }
+    })
+
+    it('should be returned by getContracts(3890)', () => {
+      expect(getContracts(3890)).toBe(KMT_CONTRACTS)
+    })
+
+    it('should have all collateral types with correct decimals', () => {
+      expect(KMT_CONTRACTS.collateral['WBTC-A'].decimals).toBe(8)
+      expect(KMT_CONTRACTS.collateral['WETH-A'].decimals).toBe(18)
+      expect(KMT_CONTRACTS.collateral['USDT-A'].decimals).toBe(6)
+      expect(KMT_CONTRACTS.collateral['USDC-A'].decimals).toBe(6)
+      expect(KMT_CONTRACTS.collateral['DAI-A'].decimals).toBe(18)
+    })
+
+    it('should have zero oracle addresses (PSM-only launch, no oracles on 3890)', () => {
+      for (const type of ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A'] as const) {
+        expect(KMT_CONTRACTS.collateral[type].oracle).toBe('0x0000000000000000000000000000000000000000')
+      }
+    })
+
+    it('should use the 3890 warp tokens as collateral tokens', () => {
+      expect(KMT_CONTRACTS.collateral['USDT-A'].token).toBe('0x6318EcDbae6B469D39C38949eDC671f4bA8A6172')
+    })
+  })
+
   describe('TESTNET_CONTRACTS', () => {
     it('should have all core contract addresses', () => {
       expect(TESTNET_CONTRACTS.core.vat).toBeDefined()

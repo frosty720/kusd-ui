@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { WalletButton } from '@/components/WalletButton'
+import { WrongNetworkBanner } from '@/components/WrongNetworkBanner'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -83,6 +84,7 @@ export default function Navigation() {
           </div>
         </div>
       </div>
+      <WrongNetworkBanner />
     </nav>
   )
 }

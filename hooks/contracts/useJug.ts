@@ -20,6 +20,7 @@ export function useJug(chainId: number) {
   // Get ilk data (duty, rho)
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
+      chainId,
       address: jugAddress,
       abi: JugABI.abi,
       functionName: 'ilks',
@@ -34,6 +35,7 @@ export function useJug(chainId: number) {
   // Get base rate
   const useBase = () => {
     return useReadContract({
+      chainId,
       address: jugAddress,
       abi: JugABI.abi,
       functionName: 'base',

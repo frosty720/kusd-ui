@@ -21,6 +21,7 @@ export function useEnd(chainId: number) {
   // Check if system is live (1 = live, 0 = caged/shutdown)
   const useLive = () => {
     return useReadContract({
+      chainId,
       address: endAddress,
       abi: EndABI.abi,
       functionName: 'live',
@@ -33,6 +34,7 @@ export function useEnd(chainId: number) {
   // Get the timestamp when shutdown was triggered
   const useWhen = () => {
     return useReadContract({
+      chainId,
       address: endAddress,
       abi: EndABI.abi,
       functionName: 'when',
@@ -45,6 +47,7 @@ export function useEnd(chainId: number) {
   // Get the wait period before thaw can be called
   const useWait = () => {
     return useReadContract({
+      chainId,
       address: endAddress,
       abi: EndABI.abi,
       functionName: 'wait',
@@ -57,6 +60,7 @@ export function useEnd(chainId: number) {
   // Get total debt at shutdown
   const useDebt = () => {
     return useReadContract({
+      chainId,
       address: endAddress,
       abi: EndABI.abi,
       functionName: 'debt',
@@ -69,6 +73,7 @@ export function useEnd(chainId: number) {
   // Check if caller is authorized (wards)
   const useWards = (address: `0x${string}` | undefined) => {
     return useReadContract({
+      chainId,
       address: endAddress,
       abi: EndABI.abi,
       functionName: 'wards',
@@ -89,6 +94,7 @@ export function useEnd(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 

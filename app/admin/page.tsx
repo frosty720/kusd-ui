@@ -1,12 +1,13 @@
 'use client'
 
 import Navigation from '@/components/Navigation'
-import { useChainId, useAccount, useBalance, useReadContract } from 'wagmi'
-import { useVat, usePot, useEnd, useVow, useTokenBalance, usePSM, useKusdPrice, useOracle } from '@/hooks'
+import { useAccount, useBalance, useReadContract } from 'wagmi'
+import { useVat, usePot, useEnd, useVow, useTokenBalance, usePSM, useKusdPegPrice, useOracle } from '@/hooks'
 import { formatRAD, formatRAY, formatWAD } from '@/lib'
 import { useState } from 'react'
-import { MAINNET_CONTRACTS, TESTNET_CONTRACTS, getAllCollateralTypes, type CollateralType } from '@/config/contracts'
+import { getAllCollateralTypes, getContracts, getNetworkSettings, type CollateralType } from '@/config/contracts'
 import { formatUnits } from 'viem'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 
 // Environment variables for PSM and Keeper
 const PSM_ADDRESS = process.env.NEXT_PUBLIC_PSM_ADDRESS as `0x${string}` | undefined
@@ -14,15 +15,17 @@ const POCKET_ADDRESS = process.env.NEXT_PUBLIC_PSM_POCKET_ADDRESS as `0x${string
 const KEEPER_WALLET = process.env.NEXT_PUBLIC_KEEPER_WALLET as `0x${string}` | undefined
 
 // Admin NFT contract address - only holders can access admin functions
-const ADMIN_NFT_ADDRESS = '0x6B9557d1A52B9813288f45518D880C891b49491a' as const
+// KeyPass NFT gating this page, per network (3890's KeyPass is 0x75A00d81…)
+const ADMIN_NFT_ADDRESS = getNetworkSettings(APP_CHAIN_ID).adminNft
+const NATIVE = APP_NETWORK.nativeCurrency.symbol
 
 export default function AdminPage() {
-  const chainId = useChainId()
   const { address, isConnected } = useAccount()
   const [showShutdownConfirm, setShowShutdownConfirm] = useState(false)
 
   // Check if user holds the admin NFT
   const { data: adminNftBalance, isLoading: isNftLoading } = useReadContract({
+    chainId: APP_CHAIN_ID,
     address: ADMIN_NFT_ADDRESS,
     abi: [{
       name: 'balanceOf',
@@ -39,15 +42,16 @@ export default function AdminPage() {
   const hasAdminNft = adminNftBalance && typeof adminNftBalance === 'bigint' && adminNftBalance > 0n
 
   // Get contracts for display
-  const contracts = chainId === 3888 ? MAINNET_CONTRACTS : TESTNET_CONTRACTS
-  const usdcAddress = contracts.collateral['USDC-A'].token
+  const contracts = getContracts(APP_CHAIN_ID)
+  // The PSM's stable (pocket and keeper hold it): USDT on 3890, USDC on the legacy chains
+  const pegStable = contracts.collateral[getNetworkSettings(APP_CHAIN_ID).pegStable]
   const kusdAddress = contracts.core.kusd
 
   // Core hooks
-  const vat = useVat(chainId || 3889)
-  const pot = usePot(chainId || 3889)
-  const end = useEnd(chainId || 3889)
-  const vow = useVow(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
+  const pot = usePot(APP_CHAIN_ID)
+  const end = useEnd(APP_CHAIN_ID)
+  const vow = useVow(APP_CHAIN_ID)
 
   // Vat data
   const { data: totalDebt } = vat.useDebt()
@@ -68,12 +72,12 @@ export default function AdminPage() {
   const { data: vowAsh } = vow.useAsh()
 
   // PSM Pocket balances
-  const { data: pocketUsdcBalance } = useTokenBalance(usdcAddress, POCKET_ADDRESS)
+  const { data: pocketUsdcBalance } = useTokenBalance(pegStable.token, POCKET_ADDRESS)
   const { data: pocketKusdBalance } = useTokenBalance(kusdAddress, POCKET_ADDRESS)
 
   // Keeper wallet balances
-  const { data: keeperKlcBalance } = useBalance({ address: KEEPER_WALLET })
-  const { data: keeperUsdcBalance } = useTokenBalance(usdcAddress, KEEPER_WALLET)
+  const { data: keeperKlcBalance } = useBalance({ chainId: APP_CHAIN_ID, address: KEEPER_WALLET })
+  const { data: keeperUsdcBalance } = useTokenBalance(pegStable.token, KEEPER_WALLET)
   const { data: keeperKusdBalance } = useTokenBalance(kusdAddress, KEEPER_WALLET)
 
   // PSM data
@@ -82,7 +86,7 @@ export default function AdminPage() {
   const { data: psmTout } = psm.useTout()
 
   // KUSD price from DEX
-  const { price: kusdPrice, deviation: pegDeviation, status: pegStatus } = useKusdPrice(kusdAddress, usdcAddress)
+  const { price: kusdPrice, deviation: pegDeviation, status: pegStatus } = useKusdPegPrice()
 
   // Collateral ilk data for utilization
   const { data: wbtcIlk } = vat.useIlk(contracts.collateral['WBTC-A'].ilk as `0x${string}`)
@@ -133,13 +137,13 @@ export default function AdminPage() {
 
   // Format PSM/Keeper balances
   const pocketUsdc = pocketUsdcBalance && typeof pocketUsdcBalance === 'bigint'
-    ? Number(formatUnits(pocketUsdcBalance, 6)) : 0
+    ? Number(formatUnits(pocketUsdcBalance, pegStable.decimals)) : 0
   const pocketKusd = pocketKusdBalance && typeof pocketKusdBalance === 'bigint'
     ? Number(formatUnits(pocketKusdBalance, 18)) : 0
   const keeperKlc = keeperKlcBalance?.value
     ? Number(formatUnits(keeperKlcBalance.value, 18)) : 0
   const keeperUsdc = keeperUsdcBalance && typeof keeperUsdcBalance === 'bigint'
-    ? Number(formatUnits(keeperUsdcBalance, 6)) : 0
+    ? Number(formatUnits(keeperUsdcBalance, pegStable.decimals)) : 0
   const keeperKusd = keeperKusdBalance && typeof keeperKusdBalance === 'bigint'
     ? Number(formatUnits(keeperKusdBalance, 18)) : 0
 
@@ -267,7 +271,7 @@ export default function AdminPage() {
             <div className="text-right">
               <p className="text-sm text-[#9ca3af]">Network</p>
               <p className="text-white font-medium">
-                {chainId === 3888 ? 'KalyChain Mainnet' : 'KalyChain Testnet'}
+                {APP_NETWORK.name}
               </p>
             </div>
           </div>
@@ -330,9 +334,9 @@ export default function AdminPage() {
             <h3 className="text-lg font-bold text-white mb-4">📦 PSM Pocket Status</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">USDC Balance</span>
+                <span className="text-[#9ca3af]">{pegStable.symbol} Balance</span>
                 <span className={`font-bold ${pocketUsdc < 100 ? 'text-red-400' : pocketUsdc < 1000 ? 'text-yellow-400' : 'text-green-400'}`}>
-                  {pocketUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC
+                  {pocketUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 })} {pegStable.symbol}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -347,7 +351,7 @@ export default function AdminPage() {
               </div>
               {pocketUsdc < 100 && (
                 <div className="mt-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-                  <p className="text-sm text-red-400">⚠️ Low USDC in pocket. Add funds to enable peg arbitrage.</p>
+                  <p className="text-sm text-red-400">⚠️ Low {pegStable.symbol} in pocket. Add funds to enable peg arbitrage.</p>
                 </div>
               )}
             </div>
@@ -358,15 +362,15 @@ export default function AdminPage() {
             <h3 className="text-lg font-bold text-white mb-4">🤖 Keeper Wallet Status</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">KLC Balance</span>
+                <span className="text-[#9ca3af]">{NATIVE} Balance</span>
                 <span className={`font-bold ${keeperKlc < 0.1 ? 'text-red-400' : keeperKlc < 1 ? 'text-yellow-400' : 'text-green-400'}`}>
-                  {keeperKlc.toLocaleString('en-US', { maximumFractionDigits: 4 })} KLC
+                  {keeperKlc.toLocaleString('en-US', { maximumFractionDigits: 4 })} {NATIVE}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">USDC Balance</span>
+                <span className="text-[#9ca3af]">{pegStable.symbol} Balance</span>
                 <span className="text-white font-medium">
-                  {keeperUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC
+                  {keeperUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 })} {pegStable.symbol}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -381,7 +385,7 @@ export default function AdminPage() {
               </div>
               {keeperKlc < 0.1 && (
                 <div className="mt-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-                  <p className="text-sm text-red-400">⚠️ Low KLC for gas. Keeper may fail to execute transactions.</p>
+                  <p className="text-sm text-red-400">⚠️ Low {NATIVE} for gas. Keeper may fail to execute transactions.</p>
                 </div>
               )}
             </div>
@@ -399,12 +403,12 @@ export default function AdminPage() {
             <div>
               <p className="text-xs text-[#6b7280] mb-1">Buy Fee (tin)</p>
               <p className="text-white font-medium">{tinFee.toFixed(2)}%</p>
-              <p className="text-xs text-[#6b7280]">USDC → KUSD</p>
+              <p className="text-xs text-[#6b7280]">{pegStable.symbol} → KUSD</p>
             </div>
             <div>
               <p className="text-xs text-[#6b7280] mb-1">Sell Fee (tout)</p>
               <p className="text-white font-medium">{toutFee.toFixed(2)}%</p>
-              <p className="text-xs text-[#6b7280]">KUSD → USDC</p>
+              <p className="text-xs text-[#6b7280]">KUSD → {pegStable.symbol}</p>
             </div>
           </div>
         </div>

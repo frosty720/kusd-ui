@@ -371,6 +371,36 @@ describe("RampApiError vs network failures", () => {
       "The payment provider could not process this request. Please try again shortly. (InvalidRequestBody)",
     );
   });
+  it("marks a keeper our route could not reach as an UNKNOWN outcome (keep the idempotency key)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "keeper_unreachable" }), {
+            status: 504,
+          }),
+      ),
+    );
+    const err = (await fetchRampQuote("NGN", "1").catch((e) => e)) as RampApiError;
+    expect(err).toBeInstanceOf(RampApiError);
+    expect(err.outcomeUnknown).toBe(true);
+    expect(err.message).toBe(
+      "Could not reach the payment service. Please try again — retrying will not create a second payment.",
+    );
+  });
+  it("treats a keeper rejection as definitive (a fresh key next time)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "amount_out_of_range" }), {
+            status: 422,
+          }),
+      ),
+    );
+    const err = (await fetchRampQuote("NGN", "1").catch((e) => e)) as RampApiError;
+    expect(err.outcomeUnknown).toBe(false);
+  });
   it("lets network failures propagate as plain errors (outcome unknown)", async () => {
     vi.stubGlobal(
       "fetch",

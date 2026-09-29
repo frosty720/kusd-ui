@@ -1,6 +1,7 @@
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { encodeFunctionData } from 'viem'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 // Multicall3 standard address (deployed on 250+ chains)
 // If not deployed on your chain, deploy it yourself and set NEXT_PUBLIC_MULTICALL3_ADDRESS in .env
@@ -40,6 +41,7 @@ export const useMulticall3 = () => {
   const { data: hash, writeContract, isPending, error } = useWriteContract()
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    chainId: APP_CHAIN_ID,
     hash,
   })
 

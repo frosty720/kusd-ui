@@ -26,6 +26,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
   // Get the ilk (collateral type identifier)
   const useIlk = () => {
     return useReadContract({
+      chainId,
       address: joinAddress,
       abi,
       functionName: 'ilk',
@@ -35,6 +36,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
   // Get the gem (collateral token address)
   const useGem = () => {
     return useReadContract({
+      chainId,
       address: joinAddress,
       abi,
       functionName: 'gem',
@@ -44,6 +46,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
   // Get the vat address
   const useVat = () => {
     return useReadContract({
+      chainId,
       address: joinAddress,
       abi,
       functionName: 'vat',
@@ -55,6 +58,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
     if (!isNon18Decimal) return { data: 18 }
     
     return useReadContract({
+      chainId,
       address: joinAddress,
       abi: GemJoin5ABI.abi,
       functionName: 'dec',
@@ -70,6 +74,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -98,6 +103,7 @@ export function useGemJoin(chainId: number, collateralType: CollateralType) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     

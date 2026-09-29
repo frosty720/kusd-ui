@@ -3,38 +3,42 @@
 import Navigation from '@/components/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useChainId, useAccount, useBalance } from 'wagmi'
-import { useUserPortfolio, type VaultPosition, type DSRPosition, type PortfolioSummary, useVat, usePot, useKusdPrice, useTokenBalance, useOracle } from '@/hooks'
+import { useAccount, useBalance } from 'wagmi'
+import { useUserPortfolio, type VaultPosition, type DSRPosition, type PortfolioSummary, useVat, usePot, useKusdPegPrice, useTokenBalance, useOracle } from '@/hooks'
 import { formatWAD, formatRAY, formatRAD } from '@/lib'
 import { useProtocolStats } from '@/hooks/subgraph/useProtocolStats'
 import { RAY } from '@/lib/constants'
-import { MAINNET_CONTRACTS, TESTNET_CONTRACTS } from '@/config/contracts'
+import { getContracts, getNetworkSettings } from '@/config/contracts'
 import { formatUnits } from 'viem'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+
+// Where users swap the PSM stable for KUSD 1:1 (KalySwap's PSM swap).
+const PSM_SWAP_URL = process.env.NEXT_PUBLIC_PSM_SWAP_URL || 'https://app.kalyswap.io/kusd?tab=swap'
+const NATIVE = APP_NETWORK.nativeCurrency.symbol
 
 export default function DashboardPage() {
-  const chainId = useChainId()
   const { address, isConnected } = useAccount()
 
   // Get contracts based on chain
-  const contracts = chainId === 3888 ? MAINNET_CONTRACTS : TESTNET_CONTRACTS
-  const kusdAddress = contracts.core.kusd
-  const usdcAddress = contracts.collateral['USDC-A'].token
+  const contracts = getContracts(APP_CHAIN_ID)
+  // The stable the PSM swaps against KUSD: USDT on 3890, USDC on the legacy chains
+  const pegStable = contracts.collateral[getNetworkSettings(APP_CHAIN_ID).pegStable]
 
   const { vaults, dsrPosition, summary, kusdWalletBalance, isLoading } = useUserPortfolio(
-    chainId || 3889,
+    APP_CHAIN_ID,
     address as `0x${string}` | undefined
   )
 
   // Additional hooks for enhanced dashboard
-  const vat = useVat(chainId || 3889)
-  const pot = usePot(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
+  const pot = usePot(APP_CHAIN_ID)
 
   // KUSD price from DEX
-  const { price: kusdPrice, deviation: pegDeviation, status: pegStatus } = useKusdPrice(kusdAddress, usdcAddress)
+  const { price: kusdPrice, deviation: pegDeviation, status: pegStatus } = useKusdPegPrice()
 
   // Wallet balances
-  const { data: klcBalance } = useBalance({ address })
-  const { data: usdcBalance } = useTokenBalance(usdcAddress, address)
+  const { data: klcBalance } = useBalance({ chainId: APP_CHAIN_ID, address })
+  const { data: stableBalance } = useTokenBalance(pegStable.token, address)
 
   // Protocol stats
   const { data: totalDebt } = vat.useDebt()
@@ -68,8 +72,8 @@ export default function DashboardPage() {
 
   // Format wallet balances
   const klcBalanceNum = klcBalance?.value ? Number(formatUnits(klcBalance.value, 18)) : 0
-  const usdcBalanceNum = usdcBalance && typeof usdcBalance === 'bigint'
-    ? Number(formatUnits(usdcBalance, 6)) : 0
+  const stableBalanceNum = stableBalance && typeof stableBalance === 'bigint'
+    ? Number(formatUnits(stableBalance, pegStable.decimals)) : 0
   const kusdBalanceNum = kusdWalletBalance ? Number(formatRAD(kusdWalletBalance)) : 0
 
   // Format oracle prices
@@ -122,21 +126,23 @@ export default function DashboardPage() {
                 <span className="text-white font-medium">{kusdBalanceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">USDC</span>
-                <span className="text-white font-medium">{usdcBalanceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                <span className="text-[#9ca3af]">{pegStable.symbol}</span>
+                <span className="text-white font-medium">{stableBalanceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#9ca3af]">KLC</span>
+                <span className="text-[#9ca3af]">{NATIVE}</span>
                 <span className="text-white font-medium">{klcBalanceNum.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
               </div>
-              {usdcBalanceNum > 0 && (
+              {stableBalanceNum > 0 && (
                 <div className="pt-3 border-t border-[#262626]">
-                  <Link
-                    href="/mint"
+                  <a
+                    href={PSM_SWAP_URL}
+                    target="_blank"
+                    rel="noreferrer"
                     className="text-sm text-[#f59e0b] hover:text-[#d97706] flex items-center gap-1"
                   >
-                    💱 Swap USDC for KUSD via PSM →
-                  </Link>
+                    💱 Swap {pegStable.symbol} for KUSD 1:1 via the PSM →
+                  </a>
                 </div>
               )}
             </div>
@@ -570,8 +576,8 @@ function QuickActionsSection() {
           color="purple"
         />
         <ActionCard
-          title="Wrap KLC"
-          description="Convert your KLC to sKLC"
+          title={`Wrap ${NATIVE}`}
+          description={`Convert your ${NATIVE} to sKLC`}
           href="/wrap"
           icon="🔄"
           color="blue"

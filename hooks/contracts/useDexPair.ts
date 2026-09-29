@@ -5,8 +5,11 @@
  */
 
 import { useReadContract, useReadContracts } from 'wagmi'
-import { type Address } from 'viem'
+import { type Address, parseAbi, zeroAddress } from 'viem'
 import UniswapV2PairABI from '@/abis/UniswapV2Pair.json'
+import { getContracts, getNetworkSettings } from '@/config/contracts'
+import { deepestPool, kusdPriceFromSqrt, pegStatus, type PegPool } from '@/lib/peg'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 // DEX pair address from environment
 const PAIR_ADDRESS = process.env.NEXT_PUBLIC_DEX_PAIR_ADDRESS as Address | undefined
@@ -19,6 +22,7 @@ export function useDexPair() {
   // Get reserves
   const useReserves = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PAIR_ADDRESS,
       abi: UniswapV2PairABI.abi,
       functionName: 'getReserves',
@@ -32,6 +36,7 @@ export function useDexPair() {
   // Get token0 address
   const useToken0 = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PAIR_ADDRESS,
       abi: UniswapV2PairABI.abi,
       functionName: 'token0',
@@ -44,6 +49,7 @@ export function useDexPair() {
   // Get token1 address
   const useToken1 = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: PAIR_ADDRESS,
       abi: UniswapV2PairABI.abi,
       functionName: 'token1',
@@ -106,5 +112,78 @@ export function useKusdPrice(kusdAddress: Address | undefined, usdcAddress: Addr
   }
 
   return { price, deviation, status }
+}
+
+const v3FactoryAbi = parseAbi(['function getPool(address, address, uint24) view returns (address)'])
+const v3PoolAbi = parseAbi([
+  'function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 a, uint16 b, uint16 c, uint8 d, bool e)',
+  'function liquidity() view returns (uint128)',
+  'function token0() view returns (address)',
+])
+
+type KusdPrice =
+  | { price: number; deviation: number; status: ReturnType<typeof pegStatus> }
+  | { price: null; deviation: null; status: 'loading' | 'no-liquidity' }
+
+/**
+ * KUSD price from the deepest KUSD/stable KalySwap V3 pool across the configured fee tiers (3890),
+ * in the same shape as useKusdPrice. Pools are found through the factory, so a new pool shows up
+ * without a config change.
+ */
+function useKusdV3Price(
+  factory: Address | undefined,
+  feeTiers: readonly number[],
+  kusd: Address,
+  stable: { token: Address; decimals: number },
+): KusdPrice {
+  const { data: pools } = useReadContracts({
+    contracts: factory
+      ? feeTiers.map((fee) => ({ chainId: APP_CHAIN_ID, address: factory, abi: v3FactoryAbi, functionName: 'getPool' as const, args: [kusd, stable.token, fee] as const }))
+      : [],
+    query: { enabled: Boolean(factory), refetchInterval: 60000 },
+  })
+  const found = (pools ?? []).map((r) => r.result).filter((p): p is Address => typeof p === 'string' && p !== zeroAddress)
+  const { data: state } = useReadContracts({
+    contracts: found.flatMap((pool) => [
+      { chainId: APP_CHAIN_ID, address: pool, abi: v3PoolAbi, functionName: 'liquidity' as const },
+      { chainId: APP_CHAIN_ID, address: pool, abi: v3PoolAbi, functionName: 'slot0' as const },
+      { chainId: APP_CHAIN_ID, address: pool, abi: v3PoolAbi, functionName: 'token0' as const },
+    ]),
+    query: { enabled: found.length > 0, refetchInterval: 10000 },
+  })
+
+  if (!factory || !pools) return { price: null, deviation: null, status: 'loading' }
+  if (found.length === 0) return { price: null, deviation: null, status: 'no-liquidity' }
+  if (!state) return { price: null, deviation: null, status: 'loading' }
+  const read: PegPool[] = found.map((pool, i) => ({
+    pool,
+    liquidity: (state[i * 3]?.result as bigint | undefined) ?? 0n,
+    sqrtPriceX96: ((state[i * 3 + 1]?.result as readonly [bigint, ...unknown[]] | undefined)?.[0]) ?? 0n,
+    token0: (state[i * 3 + 2]?.result as Address | undefined) ?? zeroAddress,
+  }))
+  const best = deepestPool(read)
+  if (!best) return { price: null, deviation: null, status: 'no-liquidity' }
+  const price = kusdPriceFromSqrt(best.sqrtPriceX96, best.token0.toLowerCase() === kusd.toLowerCase(), 18, stable.decimals)
+  return { price, deviation: (price - 1) * 100, status: pegStatus(price) }
+}
+
+/**
+ * KUSD market price on the app's network: the V2 KUSD/stable pair on the legacy chains, the
+ * deepest KUSD/USDT V3 pool on 3890. Both hooks are always called (rules of hooks); the one the
+ * network does not use stays disabled.
+ */
+export function useKusdPegPrice(): KusdPrice {
+  const settings = getNetworkSettings(APP_CHAIN_ID)
+  const contracts = getContracts(APP_CHAIN_ID)
+  const stable = contracts.collateral[settings.pegStable]
+  const isV3 = settings.peg.kind === 'v3'
+  const v2 = useKusdPrice(isV3 ? undefined : contracts.core.kusd, isV3 ? undefined : stable.token)
+  const v3 = useKusdV3Price(
+    settings.peg.kind === 'v3' ? settings.peg.factory : undefined,
+    settings.peg.kind === 'v3' ? settings.peg.feeTiers : [],
+    contracts.core.kusd,
+    stable,
+  )
+  return isV3 ? v3 : (v2 as KusdPrice)
 }
 

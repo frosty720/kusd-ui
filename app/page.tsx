@@ -3,19 +3,17 @@
 import Navigation from '@/components/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useChainId } from 'wagmi'
 import { useVat, usePot } from '@/hooks'
 import { formatRAD, formatRAY, formatWAD } from '@/lib'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 
 export default function Home() {
-  const chainId = useChainId()
-
   // Vat for total debt
-  const vat = useVat(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
   const { data: totalDebt } = vat.useDebt()
 
   // Pot for DSR
-  const pot = usePot(chainId || 3889)
+  const pot = usePot(APP_CHAIN_ID)
   const { data: potDsr } = pot.useDsr()
   const { data: potTotalPie } = pot.useTotalPie()
   const { data: potChi } = pot.useChi()
@@ -63,7 +61,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]"></span>
               </span>
-              <span className="text-sm text-[#9ca3af] font-medium">Live on KalyChain Mainnet</span>
+              <span className="text-sm text-[#9ca3af] font-medium">Live on {APP_NETWORK.name}</span>
             </div>
 
             <h1 className="mb-6 text-5xl font-bold tracking-tight text-white sm:text-7xl">

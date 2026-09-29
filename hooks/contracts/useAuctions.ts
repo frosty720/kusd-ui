@@ -27,6 +27,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
   // Get auction data
   const useSale = (auctionId: bigint | undefined) => {
     return useReadContract({
+      chainId,
       address: clipperAddress,
       abi: ClipperABI.abi,
       functionName: 'sales',
@@ -41,6 +42,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
+      chainId,
       address: clipperAddress,
       abi: ClipperABI.abi,
       functionName: 'kicks',
@@ -53,6 +55,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
   // Get current price for an auction
   const useStatus = (auctionId: bigint | undefined) => {
     return useReadContract({
+      chainId,
       address: clipperAddress,
       abi: ClipperABI.abi,
       functionName: 'getStatus',
@@ -73,6 +76,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -126,6 +130,7 @@ export function useFlapper(chainId: number) {
   // Get auction data
   const useBid = (auctionId: bigint | undefined) => {
     return useReadContract({
+      chainId,
       address: flapperAddress,
       abi: FlapperABI.abi,
       functionName: 'bids',
@@ -140,6 +145,7 @@ export function useFlapper(chainId: number) {
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
+      chainId,
       address: flapperAddress,
       abi: FlapperABI.abi,
       functionName: 'kicks',
@@ -158,6 +164,7 @@ export function useFlapper(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -186,6 +193,7 @@ export function useFlapper(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -232,6 +240,7 @@ export function useFlopper(chainId: number) {
   // Get auction data
   const useBid = (auctionId: bigint | undefined) => {
     return useReadContract({
+      chainId,
       address: flopperAddress,
       abi: FlopperABI.abi,
       functionName: 'bids',
@@ -246,6 +255,7 @@ export function useFlopper(chainId: number) {
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
+      chainId,
       address: flopperAddress,
       abi: FlopperABI.abi,
       functionName: 'kicks',
@@ -264,6 +274,7 @@ export function useFlopper(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -292,6 +303,7 @@ export function useFlopper(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 

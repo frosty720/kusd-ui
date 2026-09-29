@@ -8,6 +8,10 @@ import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, parseWAD, formatInputValue } from '@/lib'
 import { formatUnits } from 'viem'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+
+// The chain's native coin: KMT on 3890, KLC on the legacy chains. sKLC wraps it 1:1.
+const NATIVE = APP_NETWORK.nativeCurrency.symbol
 
 export default function WrapPage() {
   const [amount, setAmount] = useState('')
@@ -15,15 +19,16 @@ export default function WrapPage() {
   const [error, setError] = useState('')
 
   // Get user's wallet address and chain ID
-  const { address, chainId } = useAccount()
+  const { address } = useAccount()
 
-  // Get KLC balance (native token)
+  // Native coin balance
   const { data: klcBalance } = useBalance({
+    chainId: APP_CHAIN_ID,
     address,
   })
 
   // Get sKLC contract hooks
-  const sklc = useSKLC(chainId || 3889) // Default to testnet
+  const sklc = useSKLC(APP_CHAIN_ID)
 
   // Get sKLC balance
   const { data: sklcBalance } = sklc.useBalance(address)
@@ -39,8 +44,8 @@ export default function WrapPage() {
   // Refresh balances the instant a tx confirms (no ~10s poll wait)
   useRefetchOnTxSuccess(isWrapSuccess)
   useRefetchOnTxSuccess(isUnwrapSuccess)
-  useTxToast({ isSuccess: isWrapSuccess, hash: wrapHash, error: wrapError, successMessage: 'Wrapped KLC → sKLC', errorMessage: 'Wrap failed' })
-  useTxToast({ isSuccess: isUnwrapSuccess, hash: unwrapHash, error: unwrapError, successMessage: 'Unwrapped sKLC → KLC', errorMessage: 'Unwrap failed' })
+  useTxToast({ isSuccess: isWrapSuccess, hash: wrapHash, error: wrapError, successMessage: `Wrapped ${NATIVE} → sKLC`, errorMessage: 'Wrap failed' })
+  useTxToast({ isSuccess: isUnwrapSuccess, hash: unwrapHash, error: unwrapError, successMessage: `Unwrapped sKLC → ${NATIVE}`, errorMessage: 'Unwrap failed' })
 
   // Reset form on success
   useEffect(() => {
@@ -68,9 +73,9 @@ export default function WrapPage() {
       const amountWAD = parseWAD(amount)
 
       if (isWrapping) {
-        // Check if user has enough KLC
+        // Check the native balance covers it
         if (klcBalance && amountWAD > klcBalance.value) {
-          setError('Insufficient KLC balance')
+          setError(`Insufficient ${NATIVE} balance`)
           return
         }
         wrap(amountWAD)
@@ -89,7 +94,7 @@ export default function WrapPage() {
 
   const handleMaxClick = () => {
     if (isWrapping && klcBalance) {
-      // Leave a small amount for gas (0.01 KLC)
+      // Leave a small amount for gas (0.01 of the native coin)
       const gasReserve = parseWAD('0.01')
       const maxAmount = klcBalance.value > gasReserve ? klcBalance.value - gasReserve : 0n
       setAmount(formatUnits(maxAmount, 18))
@@ -113,19 +118,19 @@ export default function WrapPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-white mb-4">
-              Wrap KLC to sKLC
+              Wrap {NATIVE} to sKLC
             </h1>
             <p className="text-[#9ca3af] text-lg">
-              Wrap your KLC to get sKLC for participating in KUSD auctions
+              Wrap your {NATIVE} to get sKLC for participating in KUSD auctions
             </p>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
-              <div className="text-[#6b7280] text-sm mb-1">Your KLC Balance</div>
+              <div className="text-[#6b7280] text-sm mb-1">Your {NATIVE} Balance</div>
               <div className="text-2xl font-bold text-white">
-                {klcBalance ? formatWAD(klcBalance.value, 4) : '0.00'} KLC
+                {klcBalance ? formatWAD(klcBalance.value, 4) : '0.00'} {NATIVE}
               </div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
@@ -178,7 +183,7 @@ export default function WrapPage() {
                     disabled={isPending || isConfirming}
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                    {isWrapping ? 'KLC' : 'sKLC'}
+                    {isWrapping ? NATIVE : 'sKLC'}
                   </div>
                 </div>
                 <button
@@ -196,7 +201,7 @@ export default function WrapPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[#6b7280] text-sm">You will receive</span>
                   <span className="text-white font-medium">
-                    {amount || '0.0'} {isWrapping ? 'sKLC' : 'KLC'}
+                    {amount || '0.0'} {isWrapping ? 'sKLC' : NATIVE}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -234,7 +239,7 @@ export default function WrapPage() {
                   : isConfirming
                   ? 'Processing...'
                   : isWrapping
-                  ? 'Wrap KLC'
+                  ? `Wrap ${NATIVE}`
                   : 'Unwrap sKLC'}
               </button>
             </form>
@@ -244,8 +249,8 @@ export default function WrapPage() {
           <div className="mt-8 bg-orange-900/20 border border-[#F59E0B]/30 rounded-xl p-6">
             <h3 className="text-white font-semibold mb-2">About sKLC</h3>
             <p className="text-[#9ca3af] text-sm leading-relaxed">
-              sKLC (Stable Kaly Coin) is a wrapped version of KLC used for participating in KUSD auctions.
-              You can wrap and unwrap at any time with a 1:1 exchange rate. Your KLC is safely locked in
+              sKLC (Stable Kaly Coin) is a wrapped version of {NATIVE} used for participating in KUSD auctions.
+              You can wrap and unwrap at any time with a 1:1 exchange rate. Your {NATIVE} is safely locked in
               the sKLC contract and can be retrieved by unwrapping.
             </p>
           </div>

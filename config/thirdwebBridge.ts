@@ -21,21 +21,18 @@ import { useConnect, useDisconnect, useAccount, createConnector } from 'wagmi'
 import { EIP1193 } from 'thirdweb/wallets'
 import type { EIP1193Provider, Chain as ViemChain } from 'viem'
 import type { Chain as ThirdwebChain } from 'thirdweb'
-import { thirdwebClient, twActiveChain, twKalyMainnet, twKalyTestnet } from '@/config/thirdweb'
-import { kalyChainMainnet, kalyChainTestnet } from '@/config/networks'
+import { thirdwebClient, twActiveChain, TW_CHAINS } from '@/config/thirdweb'
+import { APP_NETWORK, kalyChainKmt, kalyChainMainnet, kalyChainTestnet } from '@/config/networks'
 
-// Both KalyChain networks are supported; the in-app wallet's provider follows the
+// Every KalyChain network is known here; the in-app wallet's provider follows the
 // currently-selected thirdweb chain so reads/writes hit the right chain.
 const WAGMI_CHAINS = {
   [kalyChainMainnet.id]: kalyChainMainnet,
   [kalyChainTestnet.id]: kalyChainTestnet,
-} as const
-const TW_CHAINS = {
-  [kalyChainMainnet.id]: twKalyMainnet,
-  [kalyChainTestnet.id]: twKalyTestnet,
+  [kalyChainKmt.id]: kalyChainKmt,
 } as const
 function wagmiChainFor(chainId: number): ViemChain {
-  return (WAGMI_CHAINS as Record<number, ViemChain>)[chainId] ?? kalyChainMainnet
+  return (WAGMI_CHAINS as Record<number, ViemChain>)[chainId] ?? APP_NETWORK
 }
 function twChainFor(chainId: number | undefined): ThirdwebChain {
   return (chainId && (TW_CHAINS as Record<number, ThirdwebChain>)[chainId]) || twActiveChain

@@ -14,6 +14,7 @@ import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
 import { type Address, formatUnits } from 'viem'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -29,11 +30,11 @@ export default function DepositPage() {
   const [error, setError] = useState('')
 
   // Get user's wallet address and chain ID
-  const { address, chainId } = useAccount()
+  const { address } = useAccount()
 
   // Get selected collateral config
   const selectedCollateral = collateralTypes.find(c => c.type === selectedCollateralType)!
-  const collateralConfig = getCollateral(chainId || 3889, selectedCollateralType)
+  const collateralConfig = getCollateral(APP_CHAIN_ID, selectedCollateralType)
 
   // Get token balance
   const { data: tokenBalance } = useTokenBalance(collateralConfig.token as Address, address)
@@ -46,10 +47,10 @@ export default function DepositPage() {
   )
 
   // Get GemJoin hooks
-  const gemJoin = useGemJoin(chainId || 3889, selectedCollateralType)
+  const gemJoin = useGemJoin(APP_CHAIN_ID, selectedCollateralType)
 
   // Get Vat hooks to read deposited collateral and ilk data
-  const vat = useVat(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
   // Read unlocked collateral (gem) - deposited but not locked in CDP
   const { data: gemBalance } = vat.useGem(collateralConfig.ilk as `0x${string}`, address)
   // Read locked collateral (ink) from user's CDP
@@ -60,7 +61,7 @@ export default function DepositPage() {
   const { data: ilkData } = vat.useIlk(collateralConfig.ilk as `0x${string}`)
 
   // Get oracle price from Spotter
-  const spotter = useSpotter(chainId || 3889)
+  const spotter = useSpotter(APP_CHAIN_ID)
   const { data: spotData } = spotter.useIlk(collateralConfig.ilk as `0x${string}`)
 
   // Get oracle price directly
@@ -87,7 +88,7 @@ export default function DepositPage() {
 
   // Mint test tokens hook (only for testnet)
   const { data: mintHash, writeContract: mintTokens, isPending: isMintPending, error: mintError } = useWriteContract()
-  const { isLoading: isMintConfirming, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({ hash: mintHash })
+  const { isLoading: isMintConfirming, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({ chainId: APP_CHAIN_ID, hash: mintHash })
 
   const isPending = isApprovePending || isDepositPending
   const isConfirming = isApproveConfirming || isDepositConfirming
@@ -455,7 +456,7 @@ export default function DepositPage() {
                       Max
                     </button>
                     {/* Mint Test Tokens button - only show on testnet */}
-                    {chainId === 3889 && (
+                    {APP_NETWORK.testnet && (
                       <button
                         type="button"
                         onClick={handleMintTestTokens}

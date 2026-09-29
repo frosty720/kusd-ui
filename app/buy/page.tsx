@@ -255,8 +255,9 @@ export default function BuyPage() {
     } catch (e) {
       // A definitive server rejection ends this attempt: replaying its key
       // would only re-fetch the failed_create row, so the next submit must
-      // start fresh. Network failures keep the key (outcome unknown).
-      if (e instanceof RampApiError) idemKeyRef.current = null;
+      // start fresh. Network failures and an unreachable keeper keep the key
+      // (outcome unknown: the deposit may exist, and the keeper dedupes on it).
+      if (e instanceof RampApiError && !e.outcomeUnknown) idemKeyRef.current = null;
       setError(e instanceof Error ? e.message : "deposit failed");
     } finally {
       setSubmitting(false);

@@ -22,6 +22,7 @@ export function useVat(chainId: number) {
   // Get user's CDP (urn) data for a specific collateral type
   const useUrn = (ilk: `0x${string}` | undefined, user: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'urns',
@@ -36,6 +37,7 @@ export function useVat(chainId: number) {
   // Get collateral type (ilk) configuration
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'ilks',
@@ -50,6 +52,7 @@ export function useVat(chainId: number) {
   // Get user's internal KUSD balance
   const useKusd = (user: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'kusd',
@@ -64,6 +67,7 @@ export function useVat(chainId: number) {
   // Get user's collateral balance in the Vat
   const useGem = (ilk: `0x${string}` | undefined, user: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'gem',
@@ -78,6 +82,7 @@ export function useVat(chainId: number) {
   // Check if an address can modify another address's CDP
   const useCan = (owner: Address | undefined, operator: Address | undefined) => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'can',
@@ -92,6 +97,7 @@ export function useVat(chainId: number) {
   // Get global debt ceiling
   const useLine = () => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'Line',
@@ -104,6 +110,7 @@ export function useVat(chainId: number) {
   // Get total system debt
   const useDebt = () => {
     return useReadContract({
+      chainId,
       address: vatAddress,
       abi: VatABI.abi,
       functionName: 'debt',
@@ -122,6 +129,7 @@ export function useVat(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
 
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
 
@@ -150,6 +158,7 @@ export function useVat(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     
@@ -178,6 +187,7 @@ export function useVat(chainId: number) {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
     
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+      chainId,
       hash,
     })
     

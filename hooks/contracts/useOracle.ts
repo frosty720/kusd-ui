@@ -7,6 +7,7 @@
 import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
 import KUSDOracleABI from '@/abis/KUSDOracle.json'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 export function useOracle(oracleAddress: Address | undefined) {
   /**
@@ -16,6 +17,7 @@ export function useOracle(oracleAddress: Address | undefined) {
   // Get current price and validity
   const usePeek = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: oracleAddress,
       abi: KUSDOracleABI,
       functionName: 'peek',
@@ -29,6 +31,7 @@ export function useOracle(oracleAddress: Address | undefined) {
   // Get price data (price, timestamp, valid)
   const useGetPriceData = () => {
     return useReadContract({
+      chainId: APP_CHAIN_ID,
       address: oracleAddress,
       abi: KUSDOracleABI,
       functionName: 'getPriceData',

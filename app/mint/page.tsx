@@ -11,6 +11,7 @@ import { useTxToast } from '@/hooks/useTxToast'
 import { formatWAD, formatRAD, formatRAY, parseWAD, formatInputValue, formatCurrency, radToWad } from '@/lib'
 import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
 import { type Address } from 'viem'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -26,17 +27,17 @@ export default function MintPage() {
   const [error, setError] = useState('')
   const exitInitiatedRef = useRef(false)
 
-  const { address, chainId } = useAccount()
+  const { address } = useAccount()
   const selectedCollateral = collateralTypes.find(c => c.type === selectedCollateralType)!
-  const collateralConfig = getCollateral(chainId || 3889, selectedCollateralType)
-  const contracts = getContracts(chainId || 3889)
+  const collateralConfig = getCollateral(APP_CHAIN_ID, selectedCollateralType)
+  const contracts = getContracts(APP_CHAIN_ID)
 
   // Get contract hooks
-  const vat = useVat(chainId || 3889)
-  const kusdJoin = useKusdJoin(chainId || 3889)
-  const spotter = useSpotter(chainId || 3889)
+  const vat = useVat(APP_CHAIN_ID)
+  const kusdJoin = useKusdJoin(APP_CHAIN_ID)
+  const spotter = useSpotter(APP_CHAIN_ID)
   const oracle = useOracle(collateralConfig.oracle as `0x${string}`)
-  const jug = useJug(chainId || 3889)
+  const jug = useJug(APP_CHAIN_ID)
 
   // Get user's CDP (urn) data
   const { data: urnData } = vat.useUrn(collateralConfig.ilk as `0x${string}`, address)

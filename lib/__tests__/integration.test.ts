@@ -4,19 +4,20 @@
  * These tests call actual smart contracts on the testnet to verify
  * that our math implementations produce results that match on-chain calculations.
  * 
- * IMPORTANT: These tests require network access to KalyChain testnet (3889).
+ * IMPORTANT: These tests require network access to the KMT relaunch chain (3890).
+ * (Re-pointed 2026-08-24: chain 3889 no longer exists — its fleet was cut over to 3890.)
  * They are marked with `.skip` by default and should be run manually when needed.
  * 
  * To run these tests:
  * npm test -- --run integration.test.ts
  * 
  * Environment Requirements:
- * - Network access to RPC: https://testnetrpc.kalychain.io/rpc
+ * - Network access to RPC: https://mainrpc.kalychain.io/rpc (now serving chainId 3890)
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createPublicClient, http, formatUnits } from 'viem'
-import { TESTNET_CONTRACTS } from '@/config/contracts'
+import { KMT_CONTRACTS } from '@/config/contracts'
 import { RAY, WAD } from '../constants'
 import { rayPow, rayMul } from '../math'
 import { rpow, rmul, calculateAccumulatedRate, calculateChi } from '../reference-math'
@@ -25,23 +26,23 @@ import JugABI from '@/abis/Jug.json'
 import PotABI from '@/abis/Pot.json'
 import SpotterABI from '@/abis/Spotter.json'
 
-// KalyChain testnet configuration
-const kalyTestnet = {
-  id: 3889,
-  name: 'KalyChain Testnet',
-  nativeCurrency: { name: 'KLC', symbol: 'KLC', decimals: 18 },
+// KMT relaunch chain configuration (old testnet URL, chainId 3890)
+const kalyKmt = {
+  id: 3890,
+  name: 'KalyChain',
+  nativeCurrency: { name: 'KMT', symbol: 'KMT', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://testnetrpc.kalychain.io/rpc'] },
+    default: { http: ['https://mainrpc.kalychain.io/rpc'] },
   },
 }
 
-// Create client for testnet
+// Create client for the KMT chain
 const client = createPublicClient({
-  chain: kalyTestnet as any,
+  chain: kalyKmt as any,
   transport: http(),
 })
 
-const contracts = TESTNET_CONTRACTS
+const contracts = KMT_CONTRACTS
 
 describe('Integration Tests (Live Contracts)', () => {
   describe('Contract Data Reading', () => {

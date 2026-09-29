@@ -7,6 +7,7 @@
 import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
 import ERC20ABI from '@/abis/ERC20.json'
+import { APP_CHAIN_ID } from '@/config/networks'
 
 export function useTokenAllowance(
   tokenAddress: Address | undefined,
@@ -14,6 +15,7 @@ export function useTokenAllowance(
   spenderAddress: Address | undefined
 ) {
   return useReadContract({
+    chainId: APP_CHAIN_ID,
     address: tokenAddress,
     abi: ERC20ABI.abi,
     functionName: 'allowance',
