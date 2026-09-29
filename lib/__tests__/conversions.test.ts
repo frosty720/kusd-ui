@@ -191,6 +191,13 @@ describe('conversions.ts', () => {
       expect(apr).toBeCloseTo(5, 1) // Within 0.1%
     })
 
+    // The Jug duties live on 3890: the Mint/Borrow pages showed these as 0.00% / 0.01% while
+    // they were computed with truncating bigint math.
+    it('should show the live 1% stablecoin and 2% WBTC/WETH stability fees', () => {
+      expect(rateToApr(1000000000315522921573372069n).toFixed(2)).toBe('1.00')
+      expect(rateToApr(1000000000627937192491029810n).toFixed(2)).toBe('2.00')
+    })
+
     it('should handle 0 rate (returns -100%)', () => {
       // 0 rate means 0/RAY = 0, so (0^seconds - 1) * 100 = -100
       const apr = rateToApr(0n)

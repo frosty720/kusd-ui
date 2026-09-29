@@ -7,7 +7,7 @@ import Navigation from '@/components/Navigation'
 import { useVat, useKusdJoin, useSpotter, useOracle, useJug, useTokenBalance, useTokenAllowance, useApproveToken } from '@/hooks'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, formatRAD, parseWAD, formatCurrency } from '@/lib'
+import { formatWAD, formatRAD, parseWAD, formatCurrency, rateToApr } from '@/lib'
 import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
 import { type Address, formatUnits } from 'viem'
 import { APP_CHAIN_ID } from '@/config/networks'
@@ -268,13 +268,7 @@ export default function BorrowPage() {
 
   // Calculate stability fee
   const duty = jugIlkData ? (jugIlkData as any)[0] as bigint : 10n ** 27n
-  const stabilityFee = duty > 10n ** 27n
-    ? (() => {
-        const perSecondRate = duty - 10n ** 27n
-        const annualRate = (perSecondRate * 31536000n * 100n) / 10n ** 27n
-        return Number(annualRate) / 100
-      })()
-    : 0
+  const stabilityFee = duty > 10n ** 27n ? rateToApr(duty) : 0
 
   // Accrued fees cannot be calculated accurately without tracking each user's
   // initial borrow rate. The difference between currentDebt and art represents

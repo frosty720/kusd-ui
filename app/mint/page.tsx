@@ -8,7 +8,7 @@ import Navigation from '@/components/Navigation'
 import { useVat, useKusdJoin, useSpotter, useOracle, useJug } from '@/hooks'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, formatRAD, formatRAY, parseWAD, formatInputValue, formatCurrency, radToWad } from '@/lib'
+import { formatWAD, formatRAD, formatRAY, parseWAD, formatInputValue, formatCurrency, radToWad, rateToApr } from '@/lib'
 import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
 import { type Address } from 'viem'
 import { APP_CHAIN_ID } from '@/config/networks'
@@ -135,15 +135,7 @@ export default function MintPage() {
   // APR = ((duty / 1e27) ^ seconds_per_year - 1) * 100
   const duty = jugIlkData ? (jugIlkData as any)[0] as bigint : 10n ** 27n // Per-second rate (RAY)
 
-  const stabilityFee = duty > 10n ** 27n
-    ? (() => {
-        // Calculate APR using compound interest formula
-        // For small rates, we can approximate: APR ≈ (duty - 1e27) / 1e27 * seconds_per_year * 100
-        const perSecondRate = duty - 10n ** 27n
-        const annualRate = (perSecondRate * 31536000n * 100n) / 10n ** 27n
-        return Number(annualRate) / 100
-      })()
-    : 0
+  const stabilityFee = duty > 10n ** 27n ? rateToApr(duty) : 0
 
   // Get minimum collateral ratio for the selected collateral type
   const minCollateralRatio = mat > 0n ? Number(mat) / 1e25 : 150 // Convert from RAY to percentage
@@ -353,13 +345,6 @@ export default function MintPage() {
           {/* Mint Card */}
           <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-8 mb-6">
             <form onSubmit={handleMint}>
-              {/* Error Message */}
-              {error && (
-                <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-                  <p className="text-red-400 text-sm">⚠️ {error}</p>
-                </div>
-              )}
-
               {/* Success Message */}
               {isSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
@@ -500,6 +485,13 @@ export default function MintPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Error Message: next to the button so a rejected click is visible where it happened */}
+              {error && (
+                <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                  <p className="text-red-400 text-sm">⚠️ {error}</p>
                 </div>
               )}
 
