@@ -6,27 +6,21 @@
  * Vat debt, and the KUSD still held by the PSM. The math lives in lib/protocolStats.
  */
 
-import { useReadContract, useReadContracts } from 'wagmi'
 import { type Address, parseAbi } from 'viem'
+import { useReadContract, useReadContracts } from 'wagmi'
 import { getContracts } from '@/config/contracts'
 import { APP_CHAIN_ID } from '@/config/networks'
-import { protocolStats, type ProtocolStats, type VaultCollateral } from '@/lib/protocolStats'
+import { type ProtocolStats, protocolStats, type VaultCollateral } from '@/lib/protocolStats'
 
 const PSM_ADDRESS = process.env.NEXT_PUBLIC_PSM_ADDRESS as Address | undefined
 
-const erc20Abi = parseAbi([
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-])
+const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'])
 const vatAbi = parseAbi([
   'function debt() view returns (uint256)',
   'function ilks(bytes32) view returns (uint256 Art, uint256 rate, uint256 spot, uint256 line, uint256 dust)',
 ])
 const spotterAbi = parseAbi(['function ilks(bytes32) view returns (address pip, uint256 mat)'])
-const psmAbi = parseAbi([
-  'function pocket() view returns (address)',
-  'function gem() view returns (address)',
-])
+const psmAbi = parseAbi(['function pocket() view returns (address)', 'function gem() view returns (address)'])
 
 const REFRESH_MS = 30000
 

@@ -1,11 +1,11 @@
 /**
  * Jug Contract Hook
- * 
+ *
  * Hook for reading stability fees from the Jug contract.
  */
 
-import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
+import { useReadContract } from 'wagmi'
 import JugABI from '@/abis/Jug.json'
 import { getContracts } from '@/config/contracts'
 
@@ -16,7 +16,7 @@ export function useJug(chainId: number) {
   /**
    * Read Functions
    */
-  
+
   // Get ilk data (duty, rho)
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
@@ -31,7 +31,7 @@ export function useJug(chainId: number) {
       },
     })
   }
-  
+
   // Get base rate
   const useBase = () => {
     return useReadContract({
@@ -41,11 +41,10 @@ export function useJug(chainId: number) {
       functionName: 'base',
     })
   }
-  
+
   return {
     address: jugAddress,
     useIlk,
     useBase,
   }
 }
-

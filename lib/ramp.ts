@@ -9,107 +9,94 @@
 // ── Types (mirror fiat-bridge-keeper's public API) ──────────────────────────
 
 export interface RampQuote {
-  grossUsd: string;
-  feesUsd: string;
-  netUsd: string;
-  kusd: string;
+  grossUsd: string
+  feesUsd: string
+  netUsd: string
+  kusd: string
   /** Net USD the user would receive — the buy page's estimate + $-floor check. */
-  payoutUsd: string;
-  [k: string]: unknown;
+  payoutUsd: string
+  [k: string]: unknown
 }
 
 // Mirrors DepositState in fiat-bridge-keeper/src/core/deposits.ts — the
 // keeper's code is the authority, not its spec docs (states are 'paying'/
 // 'paid', not 'paying_out'/'paid_out'; caught in the full-stack rehearsal).
-export type RampDepositState =
-  | "created"
-  | "awaiting_payment"
-  | "fiat_confirmed"
-  | "paying"
-  | "paid"
-  | "expired"
-  | "failed_create"
-  | "manual_review";
+export type RampDepositState = 'created' | 'awaiting_payment' | 'fiat_confirmed' | 'paying' | 'paid' | 'expired' | 'failed_create' | 'manual_review'
 
 export interface RampDeposit {
-  depositId: string;
-  state: RampDepositState | string;
-  payoutUsd?: string;
+  depositId: string
+  state: RampDepositState | string
+  payoutUsd?: string
   /** The original ask — lets the pay screen render after a ?deposit= resume. */
-  fiatAmount?: string;
-  fiatCurrency?: string;
+  fiatAmount?: string
+  fiatCurrency?: string
   /** Bank account details the user must pay into (from Yellow Card). */
-  bankInfo?: Record<string, unknown>;
-  expiresAt?: string;
+  bankInfo?: Record<string, unknown>
+  expiresAt?: string
   /** Hosted payment page for redirect channels (e.g. Wave) — user must open it. */
-  paymentUrl?: string | null;
-  payoutTxHash?: string;
-  [k: string]: unknown;
+  paymentUrl?: string | null
+  payoutTxHash?: string
+  [k: string]: unknown
 }
 
 export interface RampCustomer {
-  name: string;
-  country: string;
-  phone?: string;
-  address?: string;
-  dob?: string;
-  email?: string;
-  idNumber?: string;
-  idType?: string;
-  additionalIdType?: string;
-  additionalIdNumber?: string;
+  name: string
+  country: string
+  phone?: string
+  address?: string
+  dob?: string
+  email?: string
+  idNumber?: string
+  idType?: string
+  additionalIdType?: string
+  additionalIdNumber?: string
 }
 
 export interface CreateRampDepositInput {
-  idempotencyKey: string;
-  userWallet: string;
-  channelId: string;
-  currency: string;
-  localAmount: string;
-  customer: RampCustomer;
+  idempotencyKey: string
+  userWallet: string
+  channelId: string
+  currency: string
+  localAmount: string
+  customer: RampCustomer
   source: {
-    accountType: "bank" | "momo";
-    accountNumber?: string;
-    networkId?: string;
-  };
-  reason?: string;
+    accountType: 'bank' | 'momo'
+    accountNumber?: string
+    networkId?: string
+  }
+  reason?: string
 }
 
 // ── Corridors (fetched live from the keeper via /api/ramp/channels) ─────────
 
 export interface RampCorridorNetwork {
-  id: string;
-  name: string;
-  accountNumberType: string | null;
+  id: string
+  name: string
+  accountNumberType: string | null
 }
 
 export interface RampCorridor {
-  channelId: string;
-  country: string;
-  currency: string;
-  channelType: "bank" | "momo" | "p2p";
-  min: number | null;
-  max: number | null;
-  estimatedSettlementTime: number | null;
-  networks: RampCorridorNetwork[];
+  channelId: string
+  country: string
+  currency: string
+  channelType: 'bank' | 'momo' | 'p2p'
+  min: number | null
+  max: number | null
+  estimatedSettlementTime: number | null
+  networks: RampCorridorNetwork[]
 }
 
 /**
  * Per-country KYC extras the provider requires beyond the base fields.
  * Regulatory knowledge, not channel data — the only corridor info kept in code.
  */
-export const COUNTRY_KYC_EXTRAS: Record<
-  string,
-  { label: string; hint: string } | undefined
-> = {
-  NG: { label: "BVN or NIN", hint: "Required by Nigerian regulation" },
-};
+export const COUNTRY_KYC_EXTRAS: Record<string, { label: string; hint: string } | undefined> = {
+  NG: { label: 'BVN or NIN', hint: 'Required by Nigerian regulation' },
+}
 
 /** Map a corridor's payment rail to the source accountType the keeper accepts. */
-export function sourceAccountTypeFor(
-  channelType: RampCorridor["channelType"],
-): "bank" | "momo" {
-  return channelType === "momo" ? "momo" : "bank";
+export function sourceAccountTypeFor(channelType: RampCorridor['channelType']): 'bank' | 'momo' {
+  return channelType === 'momo' ? 'momo' : 'bank'
 }
 
 /**
@@ -118,17 +105,17 @@ export function sourceAccountTypeFor(
  * momo receives; bank/p2p receives need neither in production.
  */
 export function buildDepositSource(
-  channelType: RampCorridor["channelType"],
+  channelType: RampCorridor['channelType'],
   momo: { phone?: string; networkId?: string } = {},
-): CreateRampDepositInput["source"] {
-  if (channelType === "momo") {
+): CreateRampDepositInput['source'] {
+  if (channelType === 'momo') {
     return {
       accountType: sourceAccountTypeFor(channelType),
-      accountNumber: (momo.phone ?? "").replace(/[\s()-]/g, ""),
+      accountNumber: (momo.phone ?? '').replace(/[\s()-]/g, ''),
       ...(momo.networkId ? { networkId: momo.networkId } : {}),
-    };
+    }
   }
-  return { accountType: sourceAccountTypeFor(channelType) };
+  return { accountType: sourceAccountTypeFor(channelType) }
 }
 
 /**
@@ -137,7 +124,7 @@ export function buildDepositSource(
  * a hard InvalidPhoneNumberFormat rejection from YC (seen in prod 2026-08-11).
  */
 export function isInternationalPhone(value: string): boolean {
-  return /^\+\d{6,15}$/.test(value.replace(/[\s()-]/g, ""));
+  return /^\+\d{6,15}$/.test(value.replace(/[\s()-]/g, ''))
 }
 
 /**
@@ -146,46 +133,35 @@ export function isInternationalPhone(value: string): boolean {
  * an unlisted country just skips normalization, it doesn't break the flow.
  */
 export const COUNTRY_DIAL_CODES: Record<string, string> = {
-  BF: "226",
-  BJ: "229",
-  BW: "267",
-  CD: "243",
-  CG: "242",
-  CI: "225",
-  CM: "237",
-  GA: "241",
-  GH: "233",
-  KE: "254",
-  ML: "223",
-  MW: "265",
-  NE: "227",
-  NG: "234",
-  RW: "250",
-  SN: "221",
-  TG: "228",
-  TZ: "255",
-  UG: "256",
-  ZA: "27",
-  ZM: "260",
-};
+  BF: '226',
+  BJ: '229',
+  BW: '267',
+  CD: '243',
+  CG: '242',
+  CI: '225',
+  CM: '237',
+  GA: '241',
+  GH: '233',
+  KE: '254',
+  ML: '223',
+  MW: '265',
+  NE: '227',
+  NG: '234',
+  RW: '250',
+  SN: '221',
+  TG: '228',
+  TZ: '255',
+  UG: '256',
+  ZA: '27',
+  ZM: '260',
+}
 
 /**
  * Countries whose trunk "0" is dropped in international format (0801… →
  * +234801…). CI and BJ are deliberately absent: their leading digits became
  * part of the number in the 2021/2024 renumbering plans (+2250701234567).
  */
-const TRUNK_ZERO_COUNTRIES = new Set([
-  "NG",
-  "GH",
-  "KE",
-  "UG",
-  "TZ",
-  "RW",
-  "ZM",
-  "MW",
-  "ZA",
-  "CD",
-]);
+const TRUNK_ZERO_COUNTRIES = new Set(['NG', 'GH', 'KE', 'UG', 'TZ', 'RW', 'ZM', 'MW', 'ZA', 'CD'])
 
 /**
  * Best-effort conversion of user phone input to international format for the
@@ -196,22 +172,18 @@ const TRUNK_ZERO_COUNTRIES = new Set([
  * isInternationalPhone stays the single hard gate before Yellow Card.
  */
 export function normalizePhoneForCountry(raw: string, country: string): string {
-  const cleaned = raw.trim().replace(/[\s()-]/g, "");
-  if (cleaned.startsWith("+")) return cleaned;
-  if (cleaned.startsWith("00")) return `+${cleaned.slice(2)}`;
-  const iso = country.toUpperCase();
-  const dial = COUNTRY_DIAL_CODES[iso];
-  if (!dial || !/^\d+$/.test(cleaned)) return cleaned;
+  const cleaned = raw.trim().replace(/[\s()-]/g, '')
+  if (cleaned.startsWith('+')) return cleaned
+  if (cleaned.startsWith('00')) return `+${cleaned.slice(2)}`
+  const iso = country.toUpperCase()
+  const dial = COUNTRY_DIAL_CODES[iso]
+  if (!dial || !/^\d+$/.test(cleaned)) return cleaned
   // Country code typed without the + — only believable when the digits are
   // longer than any bare local number that merely starts with the same
   // digits as the dial code (national numbers here are 7-10 digits).
-  if (cleaned.startsWith(dial) && cleaned.length >= dial.length + 7)
-    return `+${cleaned}`;
-  const local =
-    TRUNK_ZERO_COUNTRIES.has(iso) && cleaned.startsWith("0")
-      ? cleaned.slice(1)
-      : cleaned;
-  return `+${dial}${local}`;
+  if (cleaned.startsWith(dial) && cleaned.length >= dial.length + 7) return `+${cleaned}`
+  const local = TRUNK_ZERO_COUNTRIES.has(iso) && cleaned.startsWith('0') ? cleaned.slice(1) : cleaned
+  return `+${dial}${local}`
 }
 
 /**
@@ -219,23 +191,19 @@ export function normalizePhoneForCountry(raw: string, country: string): string {
  * name twice under different network ids (e.g. CI lists "Wave" twice) — keep
  * the first id per case-insensitive name so the dropdown reads cleanly.
  */
-export function dedupeNetworksByName(
-  networks: RampCorridorNetwork[],
-): RampCorridorNetwork[] {
-  const seen = new Set<string>();
+export function dedupeNetworksByName(networks: RampCorridorNetwork[]): RampCorridorNetwork[] {
+  const seen = new Set<string>()
   return networks.filter((n) => {
-    const key = n.name.trim().toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const key = n.name.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /** Human label for a corridor's payment rail (p2p is a bank transfer to the user). */
-export function channelTypeLabel(
-  channelType: RampCorridor["channelType"],
-): string {
-  return channelType === "momo" ? "mobile money" : "bank transfer";
+export function channelTypeLabel(channelType: RampCorridor['channelType']): string {
+  return channelType === 'momo' ? 'mobile money' : 'bank transfer'
 }
 
 /** Country display name from its ISO code — no hardcoded country list. */
@@ -243,13 +211,9 @@ export function countryDisplayName(code: string): string {
   try {
     // fallback: "none" makes unknown-but-well-formed codes return undefined
     // instead of ICU's "Unknown Region", so users see the raw code instead.
-    return (
-      new Intl.DisplayNames(["en"], { type: "region", fallback: "none" }).of(
-        code,
-      ) ?? code
-    );
+    return new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' }).of(code) ?? code
   } catch {
-    return code;
+    return code
   }
 }
 
@@ -257,30 +221,25 @@ export function countryDisplayName(code: string): string {
  * Validate an amount against a corridor's local-currency bounds.
  * Yellow Card uses 0 for "no limit"; null means the bound was absent.
  */
-export function amountWithinCorridorLimits(
-  amount: string,
-  corridor: Pick<RampCorridor, "min" | "max">,
-): boolean {
-  const n = Number(amount);
-  if (!Number.isFinite(n)) return false;
-  if (corridor.min !== null && corridor.min > 0 && n < corridor.min)
-    return false;
-  if (corridor.max !== null && corridor.max > 0 && n > corridor.max)
-    return false;
-  return true;
+export function amountWithinCorridorLimits(amount: string, corridor: Pick<RampCorridor, 'min' | 'max'>): boolean {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return false
+  if (corridor.min !== null && corridor.min > 0 && n < corridor.min) return false
+  if (corridor.max !== null && corridor.max > 0 && n > corridor.max) return false
+  return true
 }
 
 // ── Pure helpers (unit-tested in lib/__tests__/ramp.test.ts) ────────────────
 
 /** Loose EVM address check for the payout destination field. */
 export function isEvmAddress(value: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(value.trim());
+  return /^0x[a-fA-F0-9]{40}$/.test(value.trim())
 }
 
 /** Positive decimal amount string ("25000", "25000.50"). */
 export function isValidLocalAmount(value: string): boolean {
-  if (!/^\d+(\.\d+)?$/.test(value.trim())) return false;
-  return Number(value) > 0 && Number.isFinite(Number(value));
+  if (!/^\d+(\.\d+)?$/.test(value.trim())) return false
+  return Number(value) > 0 && Number.isFinite(Number(value))
 }
 
 /**
@@ -289,14 +248,14 @@ export function isValidLocalAmount(value: string): boolean {
  * same deposit instead of opening a second Yellow Card receive.
  */
 export function makeIdempotencyKey(wallet: string): string {
-  const rand = crypto.getRandomValues(new Uint32Array(2));
-  return `ui-${wallet.slice(2, 10).toLowerCase()}-${Date.now()}-${rand[0].toString(36)}${rand[1].toString(36)}`;
+  const rand = crypto.getRandomValues(new Uint32Array(2))
+  return `ui-${wallet.slice(2, 10).toLowerCase()}-${Date.now()}-${rand[0].toString(36)}${rand[1].toString(36)}`
 }
 
 /** True when a deposit state means the flow is over (stop polling).
  * manual_review is terminal for the UI: it never resolves without a human. */
 export function isTerminalDepositState(state: string): boolean {
-  return ["paid", "expired", "failed_create", "manual_review"].includes(state);
+  return ['paid', 'expired', 'failed_create', 'manual_review'].includes(state)
 }
 
 // ── Browser client for /api/ramp/* ──────────────────────────────────────────
@@ -313,16 +272,18 @@ export class RampApiError extends Error {
    * still have been created, so — like a browser network failure — the outcome is unknown and
    * the retry must reuse the idempotency key.
    */
-  public outcomeUnknown: boolean;
+  public outcomeUnknown: boolean
 
   constructor(
     public status: number,
     message: string,
     outcomeUnknown = false,
+    /** The server's error key (Yellow Card's `code`, else the keeper's `error`), or null. */
+    public code: string | null = null,
   ) {
-    super(message);
-    this.name = "RampApiError";
-    this.outcomeUnknown = outcomeUnknown;
+    super(message)
+    this.name = 'RampApiError'
+    this.outcomeUnknown = outcomeUnknown
   }
 }
 
@@ -332,59 +293,52 @@ export class RampApiError extends Error {
  * so provider rejections can be explained instead of showing a bare "provider".
  */
 export const RAMP_ERROR_MESSAGES: Record<string, string> = {
-  InvalidPhoneNumberFormat:
-    "Phone number must be in international format (e.g. +2250701234567).",
-  PaymentValidationError:
-    "The payment provider rejected these details — please double-check them and try again.",
-  provider:
-    "The payment provider could not process this request. Please try again shortly.",
-  amount_out_of_range:
-    "This amount is outside the allowed range for your country.",
-  fees_exceed_amount: "This amount is too small — fees would exceed it.",
-  paused: "Deposits are temporarily paused. Please try again later.",
-  validation: "Some details are missing or invalid.",
-  not_found: "Deposit not found.",
-  keeper_unreachable:
-    "Could not reach the payment service. Please try again — retrying will not create a second payment.",
-};
+  InvalidPhoneNumberFormat: 'Phone number must be in international format (e.g. +2250701234567).',
+  PaymentValidationError: 'The payment provider rejected these details — please double-check them and try again.',
+  provider: 'The payment provider could not process this request. Please try again shortly.',
+  amount_out_of_range: 'This amount is outside the allowed range for your country.',
+  fees_exceed_amount: 'This amount is too small — fees would exceed it.',
+  paused: 'Deposits are temporarily paused. Please try again later.',
+  validation: 'Some details are missing or invalid.',
+  not_found: 'Deposit not found.',
+  daily_cap: 'Today’s limit has been reached. Please try again tomorrow.',
+  unknown_corridor: 'This payout method is not available right now. Please pick another one.',
+  keeper_unreachable: 'Could not reach the payment service. Please try again — retrying will not create a second payment.',
+}
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   const body = (await res.json().catch(() => ({}))) as {
-    error?: string;
-    code?: string;
-  };
+    error?: string
+    code?: string
+  }
   if (!res.ok) {
     // Prefer the provider's specific code over the keeper's generic error key.
     // Unmapped keys (e.g. fastify's default "Bad Request" body, seen in prod
     // 2026-08-12) read as the provider sentence with the raw code kept only
     // as a diagnostic suffix — never shown bare to the user.
-    const raw = body.code || body.error;
+    const raw = body.code || body.error
     const msg =
       (body.code && RAMP_ERROR_MESSAGES[body.code]) ||
       (body.error && RAMP_ERROR_MESSAGES[body.error]) ||
-      (raw
-        ? `${RAMP_ERROR_MESSAGES.provider} (${raw})`
-        : `request failed (${res.status})`);
-    throw new RampApiError(res.status, msg, body.error === "keeper_unreachable");
+      (raw ? `${RAMP_ERROR_MESSAGES.provider} (${raw})` : `request failed (${res.status})`)
+    throw new RampApiError(res.status, msg, body.error === 'keeper_unreachable', raw || null)
   }
-  return body as T;
+  return body as T
 }
 
 export interface RampChannelsResponse {
-  corridors: RampCorridor[];
+  corridors: RampCorridor[]
   /** The KEEPER's own USD floor/ceiling — the binding limits, often stricter
    * than YC's per-channel local minimums (CI Wave: 1000 XOF ≈ $1.7 vs $5). */
-  minDepositUsd?: string;
-  maxDepositUsd?: string;
-  cachedAt?: string;
-  stale?: boolean;
+  minDepositUsd?: string
+  maxDepositUsd?: string
+  cachedAt?: string
+  stale?: boolean
 }
 
 export async function fetchRampChannels(): Promise<RampChannelsResponse> {
-  const body = await jsonOrThrow<RampChannelsResponse>(
-    await fetch("/api/ramp/channels"),
-  );
-  return { ...body, corridors: body.corridors ?? [] };
+  const body = await jsonOrThrow<RampChannelsResponse>(await fetch('/api/ramp/channels'))
+  return { ...body, corridors: body.corridors ?? [] }
 }
 
 export async function fetchRampQuote(
@@ -394,28 +348,122 @@ export async function fetchRampQuote(
   // so quotes without them fall back to a zero-fee, rates-only estimate.
   corridor?: { country?: string; channelType?: string },
 ): Promise<RampQuote> {
-  const params = new URLSearchParams({ currency, localAmount });
-  if (corridor?.country) params.set("country", corridor.country);
-  if (corridor?.channelType) params.set("channelType", corridor.channelType);
-  return jsonOrThrow(await fetch(`/api/ramp/quote?${params}`));
+  const params = new URLSearchParams({ currency, localAmount })
+  if (corridor?.country) params.set('country', corridor.country)
+  if (corridor?.channelType) params.set('channelType', corridor.channelType)
+  return jsonOrThrow(await fetch(`/api/ramp/quote?${params}`))
 }
 
-export async function createRampDeposit(
-  input: CreateRampDepositInput,
-): Promise<RampDeposit> {
+export async function createRampDeposit(input: CreateRampDepositInput): Promise<RampDeposit> {
   return jsonOrThrow(
-    await fetch("/api/ramp/deposits", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+    await fetch('/api/ramp/deposits', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(input),
     }),
-  );
+  )
 }
 
-export async function fetchRampDeposit(
-  depositId: string,
-): Promise<RampDeposit> {
+export async function fetchRampDeposit(depositId: string): Promise<RampDeposit> {
+  return jsonOrThrow(await fetch(`/api/ramp/deposits/${encodeURIComponent(depositId)}`))
+}
+
+/** Withdrawal ids the keeper issues (UUIDs), and the only shape the status route forwards. */
+export function isRampWithdrawalId(id: string): boolean {
+  return /^[a-zA-Z0-9-]{8,64}$/.test(id)
+}
+
+/** A USD amount the keeper accepts for a cash-out: positive, at most 6 decimals (the payout is USDT). */
+export function isValidUsdAmount(value: string): boolean {
+  const v = value.trim()
+  return /^\d+(\.\d{1,6})?$/.test(v) && Number(v) > 0
+}
+
+// ── Mobile-money cash-out (keeper /api/withdraw*) ───────────────────────────
+
+/** fiat-bridge-keeper src/core/withdrawals.ts WithdrawalState — the keeper's code is the authority. */
+export type RampWithdrawalState =
+  | 'created'
+  | 'awaiting_funds'
+  | 'bridging'
+  | 'delivered'
+  | 'paying'
+  | 'forwarding'
+  | 'forwarded'
+  | 'refunding'
+  | 'paid'
+  | 'failed'
+  | 'expired'
+  | 'failed_create'
+
+/**
+ * Polling stops here. failed: Yellow Card could not pay, and the keeper has sent the USDT back to the
+ * seller's own address on Polygon; expired: the USDT never arrived.
+ */
+export function isTerminalWithdrawalState(state: string): boolean {
+  return ['paid', 'failed', 'expired', 'failed_create'].includes(state)
+}
+
+export interface RampWithdrawal {
+  withdrawalId: string
+  state: RampWithdrawalState | string
+  /** Where the bridge sends the USDT: the keeper's Polygon treasury, which then funds the payout. */
+  depositAddress: string | null
+  /** The payout in USD (= the USDT to send, exactly). */
+  usdAmount: string
+  localAmount: string | null
+  currency: string
+  expiresAt: string | null
+}
+
+export interface RampWithdrawChannelsResponse {
+  corridors: RampCorridor[]
+  /** The keeper's USD floor/ceiling per cash-out. */
+  minUsd?: string
+  maxUsd?: string
+  stale?: boolean
+}
+
+export interface RampWithdrawQuote {
+  usd: string
+  rate: number
+  feeLocal: number
+  receiveLocal: number
+  currency: string
+}
+
+export interface CreateRampWithdrawalInput {
+  idempotencyKey: string
+  userWallet: string
+  usdAmount: string
+  channelId: string
+  country: string
+  currency: string
+  networkId: string
+  momoNumber: string
+  accountName: string
+  sender: RampCustomer
+}
+
+export async function fetchRampWithdrawChannels(): Promise<RampWithdrawChannelsResponse> {
+  const body = await jsonOrThrow<RampWithdrawChannelsResponse>(await fetch('/api/ramp/withdraw-channels'))
+  return { ...body, corridors: body.corridors ?? [] }
+}
+
+export async function fetchRampWithdrawQuote(country: string, currency: string, usd: string): Promise<RampWithdrawQuote> {
+  return jsonOrThrow(await fetch(`/api/ramp/withdraw-quote?${new URLSearchParams({ country, currency, usd })}`))
+}
+
+export async function createRampWithdrawal(input: CreateRampWithdrawalInput): Promise<RampWithdrawal> {
   return jsonOrThrow(
-    await fetch(`/api/ramp/deposits/${encodeURIComponent(depositId)}`),
-  );
+    await fetch('/api/ramp/withdrawals', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  )
+}
+
+export async function fetchRampWithdrawal(withdrawalId: string): Promise<RampWithdrawal> {
+  return jsonOrThrow(await fetch(`/api/ramp/withdrawals/${encodeURIComponent(withdrawalId)}`))
 }

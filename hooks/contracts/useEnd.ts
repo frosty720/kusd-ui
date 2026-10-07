@@ -1,14 +1,14 @@
 /**
  * End Contract Hook
- * 
+ *
  * Hook for interacting with the End (Emergency Shutdown) contract.
  * This contract handles global settlement of the KUSD system.
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import EndABI from '@/abis/End.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useEnd(chainId: number) {
   const contracts = getContracts(chainId)
@@ -128,4 +128,3 @@ export function useEnd(chainId: number) {
     useCage,
   }
 }
-

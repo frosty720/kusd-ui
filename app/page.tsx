@@ -1,12 +1,12 @@
 'use client'
 
-import Navigation from '@/components/Navigation'
-import Link from 'next/link'
 import Image from 'next/image'
-import { usePot, useProtocolStats } from '@/hooks'
-import { formatRAY, formatWAD } from '@/lib'
-import { backingLabel } from '@/lib/protocolStats'
+import Link from 'next/link'
+import Navigation from '@/components/Navigation'
 import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { usePot, useProtocolStats } from '@/hooks'
+import { formatWAD } from '@/lib'
+import { backingLabel } from '@/lib/protocolStats'
 
 export default function Home() {
   // TVL, circulating KUSD and backing %, all read on-chain
@@ -20,18 +20,17 @@ export default function Home() {
 
   // Calculate stats
   // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
-  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
-    : 0
+  const totalInDSR =
+    potTotalPie && typeof potTotalPie === 'bigint'
+      ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+      : 0
 
   // Calculate DSR APY (dsr is per-second rate in RAY format)
   // APY = (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
   const SECONDS_PER_YEAR = 31536000
   const RAY = 10n ** 27n
-  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY
-    ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
-    : 0
+  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100 : 0
 
   const usd = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return (
@@ -62,13 +61,10 @@ export default function Home() {
             <h1 className="mb-6 text-5xl font-bold tracking-tight text-white sm:text-7xl">
               The Decentralized
               <br />
-              <span className="bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#F59E0B] bg-clip-text text-transparent">
-                Stablecoin Protocol
-              </span>
+              <span className="bg-gradient-to-r from-[#F59E0B] via-[#FBBF24] to-[#F59E0B] bg-clip-text text-transparent">Stablecoin Protocol</span>
             </h1>
             <p className="mb-10 text-xl text-[#9ca3af] leading-relaxed max-w-2xl mx-auto">
-              Mint KUSD stablecoins backed by crypto collateral. Earn passive income through the
-              KUSD Savings Rate. Built on battle-tested MakerDAO technology.
+              Mint KUSD stablecoins backed by crypto collateral. Earn passive income through the KUSD Savings Rate. Built on battle-tested MakerDAO technology.
             </p>
 
             {/* CTA Buttons */}
@@ -120,9 +116,7 @@ export default function Home() {
                   1
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Deposit Collateral</h3>
-                <p className="text-[#9ca3af]">
-                  Deposit supported crypto assets (WBTC, WETH, USDT, USDC, or DAI) as collateral into the protocol.
-                </p>
+                <p className="text-[#9ca3af]">Deposit supported crypto assets (WBTC, WETH, USDT, USDC, or DAI) as collateral into the protocol.</p>
               </div>
             </div>
 
@@ -144,9 +138,7 @@ export default function Home() {
                   3
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Earn or Use</h3>
-                <p className="text-[#9ca3af]">
-                  Deposit KUSD in the Pot to earn savings rate, use it in DeFi, or hold it as a stable store of value.
-                </p>
+                <p className="text-[#9ca3af]">Deposit KUSD in the Pot to earn savings rate, use it in DeFi, or hold it as a stable store of value.</p>
               </div>
             </div>
           </div>
@@ -181,23 +173,27 @@ export default function Home() {
             <StatCard
               title="Total Value Locked"
               value={stats ? `$${usd(stats.tvlUsd)}` : '—'}
-              change={!stats ? 'Loading' : stats.unpricedCollateral ? 'Excludes unpriced collateral' : stats.tvlUsd > 0 ? 'PSM reserves + vault collateral' : 'No deposits'}
+              change={
+                !stats
+                  ? 'Loading'
+                  : stats.unpricedCollateral
+                    ? 'Excludes unpriced collateral'
+                    : stats.tvlUsd > 0
+                      ? 'PSM reserves + vault collateral'
+                      : 'No deposits'
+              }
             />
             <StatCard
               title="KUSD Supply"
               value={stats ? `${usd(stats.circulatingKusd)} KUSD` : '—'}
-              change={totalInDSR > 0 ? `${totalInDSR.toFixed(2)} in DSR` : "No DSR deposits"}
+              change={totalInDSR > 0 ? `${totalInDSR.toFixed(2)} in DSR` : 'No DSR deposits'}
             />
             <StatCard
               title="Collateral Ratio"
               value={stats?.backingPct != null ? `${stats.backingPct.toFixed(0)}%` : 'N/A'}
               change={stats ? backingLabel(stats.backingPct) : 'Loading'}
             />
-            <StatCard
-              title="Savings Rate"
-              value={`${dsrAPY.toFixed(2)}%`}
-              change="APY"
-            />
+            <StatCard title="Savings Rate" value={`${dsrAPY.toFixed(2)}%`} change="APY" />
           </div>
         </div>
 
@@ -229,11 +225,7 @@ export default function Home() {
               description="Fork of MakerDAO's DSS - the most proven and audited stablecoin architecture in DeFi."
               icon="🛡️"
             />
-            <FeatureCard
-              title="Multi-Collateral Support"
-              description="Use WBTC, WETH, USDT, USDC, or DAI as collateral. More assets coming soon."
-              icon="🔗"
-            />
+            <FeatureCard title="Multi-Collateral Support" description="Use WBTC, WETH, USDT, USDC, or DAI as collateral. More assets coming soon." icon="🔗" />
             <FeatureCard
               title="Liquidation Protection"
               description="Transparent liquidation system with collateral auctions ensures protocol solvency."
@@ -252,9 +244,7 @@ export default function Home() {
                     <span className="text-3xl">🛡️</span>
                   </div>
                   <h2 className="text-3xl font-bold text-white mb-4">Built on Proven Technology</h2>
-                  <p className="text-xl text-[#9ca3af]">
-                    KUSD is a fork of MakerDAO's Multi-Collateral Dai (DSS) system
-                  </p>
+                  <p className="text-xl text-[#9ca3af]">KUSD is a fork of MakerDAO's Multi-Collateral Dai (DSS) system</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6 mt-8">
@@ -274,8 +264,7 @@ export default function Home() {
 
                 <div className="mt-8 p-6 bg-orange-900/20 border border-[#F59E0B]/30 rounded-xl">
                   <p className="text-[#9ca3af] text-center">
-                    The same smart contract architecture that powers DAI, the largest decentralized
-                    stablecoin, now available on KalyChain.
+                    The same smart contract architecture that powers DAI, the largest decentralized stablecoin, now available on KalyChain.
                   </p>
                 </div>
               </div>
@@ -287,9 +276,7 @@ export default function Home() {
         <div className="py-20">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-bold text-white mb-6">Ready to Get Started?</h2>
-            <p className="text-xl text-[#9ca3af] mb-10">
-              Join the decentralized stablecoin revolution on KalyChain
-            </p>
+            <p className="text-xl text-[#9ca3af] mb-10">Join the decentralized stablecoin revolution on KalyChain</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -341,9 +328,7 @@ function StatCard({ title, value, change }: { title: string; value: string; chan
     <div className="rounded-xl border border-[#262626] bg-[#1a1a1a] backdrop-blur-sm p-6 hover:border-[#404040] transition-colors">
       <div className="text-sm font-medium text-[#6b7280] mb-2">{title}</div>
       <div className="text-3xl font-bold text-white mb-1">{value}</div>
-      {change && (
-        <div className="text-sm text-[#22C55E]">{change}</div>
-      )}
+      {change && <div className="text-sm text-[#22C55E]">{change}</div>}
     </div>
   )
 }
@@ -364,13 +349,7 @@ function CollateralCard({ name, fullName }: { name: string; fullName: string }) 
   return (
     <div className="group rounded-xl border border-[#262626] bg-[#1a1a1a] backdrop-blur-sm p-6 text-center transition-all hover:border-[#F59E0B]/50 hover:bg-[#1f1f1f] hover:shadow-lg hover:shadow-orange-900/20">
       <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
-        <Image
-          src={iconPath}
-          alt={`${name} logo`}
-          width={64}
-          height={64}
-          className="w-full h-full"
-        />
+        <Image src={iconPath} alt={`${name} logo`} width={64} height={64} className="w-full h-full" />
       </div>
       <div className="font-bold text-white text-lg mb-1">{name}</div>
       <div className="text-xs text-[#6b7280]">{fullName}</div>

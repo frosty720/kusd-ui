@@ -16,9 +16,7 @@ const DEFAULT_SUBGRAPH_URLS: Record<number, string> = {
 
 const SUBGRAPH_URLS: Record<number, string> = {
   ...DEFAULT_SUBGRAPH_URLS,
-  ...(process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL && DEFAULT_SUBGRAPH_URLS[APP_CHAIN_ID]
-    ? { [APP_CHAIN_ID]: process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL }
-    : {}),
+  ...(process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL && DEFAULT_SUBGRAPH_URLS[APP_CHAIN_ID] ? { [APP_CHAIN_ID]: process.env.NEXT_PUBLIC_KUSD_SUBGRAPH_URL } : {}),
 }
 
 export function subgraphUrlFor(chainId: number | undefined): string | null {
@@ -30,11 +28,7 @@ export function isSubgraphChain(chainId: number | undefined): boolean {
   return chainId !== undefined && SUBGRAPH_URLS[chainId] !== undefined
 }
 
-export async function querySubgraph<T>(
-  chainId: number | undefined,
-  query: string,
-  variables?: Record<string, unknown>,
-): Promise<T | null> {
+export async function querySubgraph<T>(chainId: number | undefined, query: string, variables?: Record<string, unknown>): Promise<T | null> {
   const url = subgraphUrlFor(chainId)
   if (!url) return null
 

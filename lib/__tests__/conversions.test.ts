@@ -3,27 +3,27 @@
  * 100% coverage for all unit conversion functions
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { RAY, WAD } from '../constants'
 import {
-  tokenToWad,
-  wadToToken,
-  bpsToRay,
-  rayToBps,
-  percentToRay,
-  rayToPercent,
   aprToRate,
-  rateToApr,
+  bpsToRay,
   collateralRatioBpsToPercent,
-  percentToCollateralRatioBps,
-  oraclePriceToUsd,
-  usdToOraclePrice,
-  scaleUp,
-  scaleDown,
   convertDecimals,
-  normalizeToWad,
   denormalizeFromWad,
+  normalizeToWad,
+  oraclePriceToUsd,
+  percentToCollateralRatioBps,
+  percentToRay,
+  rateToApr,
+  rayToBps,
+  rayToPercent,
+  scaleDown,
+  scaleUp,
+  tokenToWad,
+  usdToOraclePrice,
+  wadToToken,
 } from '../conversions'
-import { WAD, RAY } from '../constants'
 
 describe('conversions.ts', () => {
   // ============================================
@@ -385,4 +385,3 @@ describe('conversions.ts', () => {
     })
   })
 })
-

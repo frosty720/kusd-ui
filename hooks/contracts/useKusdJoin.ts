@@ -1,23 +1,23 @@
 /**
  * KusdJoin Contract Hook
- * 
+ *
  * Hook for interacting with the KusdJoin adapter (KUSD minting/burning).
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import KusdJoinABI from '@/abis/KusdJoin.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useKusdJoin(chainId: number) {
   const contracts = getContracts(chainId)
   const kusdJoinAddress = contracts.core.kusdJoin
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get the vat address
   const useVat = () => {
     return useReadContract({
@@ -27,7 +27,7 @@ export function useKusdJoin(chainId: number) {
       functionName: 'vat',
     })
   }
-  
+
   // Get the KUSD token address
   const useKusd = () => {
     return useReadContract({
@@ -37,11 +37,11 @@ export function useKusdJoin(chainId: number) {
       functionName: 'kusd',
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Join (deposit KUSD into the system - burns from user, credits internal balance)
   const useJoin = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -70,7 +70,7 @@ export function useKusdJoin(chainId: number) {
       error,
     }
   }
-  
+
   // Exit (withdraw KUSD from the system - mints to user, debits internal balance)
   const useExit = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -99,7 +99,7 @@ export function useKusdJoin(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: kusdJoinAddress,
     useVat,
@@ -108,4 +108,3 @@ export function useKusdJoin(chainId: number) {
     useExit,
   }
 }
-

@@ -1,7 +1,7 @@
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { encodeFunctionData } from 'viem'
+import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { APP_CHAIN_ID } from '@/config/networks'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 // Multicall3 standard address (deployed on 250+ chains)
 // If not deployed on your chain, deploy it yourself and set NEXT_PUBLIC_MULTICALL3_ADDRESS in .env
@@ -54,7 +54,7 @@ export const useMulticall3 = () => {
       target: `0x${string}`
       allowFailure: boolean
       callData: `0x${string}`
-    }>
+    }>,
   ) => {
     writeContract({
       address: MULTICALL3_ADDRESS,
@@ -81,15 +81,10 @@ export const useMulticall3 = () => {
  * @param functionName Function name to call
  * @param args Function arguments
  */
-export const encodeCall = (
-  abi: any,
-  functionName: string,
-  args?: any[]
-): `0x${string}` => {
+export const encodeCall = (abi: any, functionName: string, args?: any[]): `0x${string}` => {
   return encodeFunctionData({
     abi,
     functionName,
     args: args || [],
   })
 }
-

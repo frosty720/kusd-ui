@@ -47,13 +47,25 @@ describe('querySubgraph', () => {
 
   it('throws on HTTP errors and on GraphQL errors; null data stays null', async () => {
     const { querySubgraph } = await load()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('nope', { status: 500 })),
+    )
     await expect(querySubgraph(3890, '{ x }')).rejects.toThrow('Subgraph HTTP 500')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ errors: [{ message: 'bad field' }] }), { status: 200 })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ errors: [{ message: 'bad field' }] }), { status: 200 })),
+    )
     await expect(querySubgraph(3890, '{ x }')).rejects.toThrow('bad field')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ errors: [{}] }), { status: 200 })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ errors: [{}] }), { status: 200 })),
+    )
     await expect(querySubgraph(3890, '{ x }')).rejects.toThrow('Subgraph query error')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })),
+    )
     expect(await querySubgraph(3890, '{ x }', { a: 1 })).toBeNull()
   })
 })

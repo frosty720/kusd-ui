@@ -2,15 +2,8 @@
  * Network Configuration Tests
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  kalyChainTestnet,
-  kalyChainMainnet,
-  kalyChainKmt,
-  NETWORKS,
-  DEFAULT_NETWORK,
-  getCurrentNetwork,
-} from '../networks'
+import { afterEach, describe, expect, it } from 'vitest'
+import { DEFAULT_NETWORK, getCurrentNetwork, kalyChainKmt, kalyChainMainnet, kalyChainTestnet, NETWORKS } from '../networks'
 
 describe('Network Configuration', () => {
   describe('kalyChainTestnet', () => {
@@ -149,4 +142,3 @@ describe('Network Configuration', () => {
     })
   })
 })
-

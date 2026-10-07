@@ -2,17 +2,17 @@
  * Contract Configuration Tests
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  TESTNET_CONTRACTS,
-  MAINNET_CONTRACTS,
-  KMT_CONTRACTS,
-  getContracts,
-  getCollateral,
-  getAllCollateralTypes,
-  getCollateralDisplayName,
   areContractsDeployed,
   type CollateralType,
+  getAllCollateralTypes,
+  getCollateral,
+  getCollateralDisplayName,
+  getContracts,
+  KMT_CONTRACTS,
+  MAINNET_CONTRACTS,
+  TESTNET_CONTRACTS,
 } from '../contracts'
 
 describe('Contract Configuration', () => {
@@ -184,4 +184,3 @@ describe('Contract Configuration', () => {
     })
   })
 })
-

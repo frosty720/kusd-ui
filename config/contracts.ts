@@ -1,49 +1,49 @@
 /**
  * KUSD System Contract Addresses
- * 
+ *
  * This file contains all deployed contract addresses for the KUSD stablecoin system.
  * Addresses are organized by network (testnet/mainnet) and category.
- * 
+ *
  * Last Updated: 2025-11-10
  * Deployment: Latest (with sKLC)
  */
 
-export type CollateralType = 'WBTC-A' | 'WETH-A' | 'USDT-A' | 'USDC-A' | 'DAI-A';
+export type CollateralType = 'WBTC-A' | 'WETH-A' | 'USDT-A' | 'USDC-A' | 'DAI-A'
 
 export interface CollateralConfig {
-  name: string;
-  symbol: string;
-  decimals: number;
-  token: `0x${string}`;
-  join: `0x${string}`;
-  clipper: `0x${string}`;
-  oracle: `0x${string}`;
-  ilk: string; // bytes32 representation
+  name: string
+  symbol: string
+  decimals: number
+  token: `0x${string}`
+  join: `0x${string}`
+  clipper: `0x${string}`
+  oracle: `0x${string}`
+  ilk: string // bytes32 representation
 }
 
 export interface CoreContracts {
-  vat: `0x${string}`;
-  kusd: `0x${string}`;
-  sklc: `0x${string}`;
-  spotter: `0x${string}`;
-  jug: `0x${string}`;
-  pot: `0x${string}`;
-  dog: `0x${string}`;
-  vow: `0x${string}`;
-  flapper: `0x${string}`;
-  flopper: `0x${string}`;
-  end: `0x${string}`;
-  cure: `0x${string}`;
-  kusdJoin: `0x${string}`;
+  vat: `0x${string}`
+  kusd: `0x${string}`
+  sklc: `0x${string}`
+  spotter: `0x${string}`
+  jug: `0x${string}`
+  pot: `0x${string}`
+  dog: `0x${string}`
+  vow: `0x${string}`
+  flapper: `0x${string}`
+  flopper: `0x${string}`
+  end: `0x${string}`
+  cure: `0x${string}`
+  kusdJoin: `0x${string}`
   // DSProxy infrastructure
-  proxyRegistry: `0x${string}`;
-  proxyFactory: `0x${string}`;
-  proxyActions: `0x${string}`;
+  proxyRegistry: `0x${string}`
+  proxyFactory: `0x${string}`
+  proxyActions: `0x${string}`
 }
 
 export interface NetworkContracts {
-  core: CoreContracts;
-  collateral: Record<CollateralType, CollateralConfig>;
+  core: CoreContracts
+  collateral: Record<CollateralType, CollateralConfig>
 }
 
 /**
@@ -122,7 +122,7 @@ export const TESTNET_CONTRACTS: NetworkContracts = {
       ilk: '0x4441492d41000000000000000000000000000000000000000000000000000000', // "DAI-A"
     },
   },
-};
+}
 
 /**
  * KalyChain Mainnet (Chain ID: 3888)
@@ -199,7 +199,7 @@ export const MAINNET_CONTRACTS: NetworkContracts = {
       ilk: '0x4441492d41000000000000000000000000000000000000000000000000000000',
     },
   },
-};
+}
 
 /**
  * KMT relaunch chain (Chain ID: 3890)
@@ -279,7 +279,7 @@ export const KMT_CONTRACTS: NetworkContracts = {
       ilk: '0x4441492d41000000000000000000000000000000000000000000000000000000',
     },
   },
-};
+}
 
 /**
  * Get contracts for a specific chain ID
@@ -287,13 +287,13 @@ export const KMT_CONTRACTS: NetworkContracts = {
 export function getContracts(chainId: number): NetworkContracts {
   switch (chainId) {
     case 3889: // KalyChain Testnet
-      return TESTNET_CONTRACTS;
+      return TESTNET_CONTRACTS
     case 3888: // KalyChain Mainnet
-      return MAINNET_CONTRACTS;
+      return MAINNET_CONTRACTS
     case 3890: // KMT relaunch chain
-      return KMT_CONTRACTS;
+      return KMT_CONTRACTS
     default:
-      throw new Error(`Unsupported chain ID: ${chainId}`);
+      throw new Error(`Unsupported chain ID: ${chainId}`)
   }
 }
 
@@ -302,37 +302,60 @@ export function getContracts(chainId: number): NetworkContracts {
  */
 export interface NetworkSettings {
   /** The collateral whose token the PSM swaps against KUSD — the peg's quote stable. */
-  pegStable: CollateralType;
+  pegStable: CollateralType
   /** Where the KUSD market price is read: a V2 pair (NEXT_PUBLIC_DEX_PAIR_ADDRESS) or V3 pools. */
-  peg:
-    | { kind: 'v2' }
-    | { kind: 'v3'; factory: `0x${string}`; feeTiers: readonly number[] };
+  peg: { kind: 'v2' } | { kind: 'v3'; factory: `0x${string}`; feeTiers: readonly number[] }
   /** KeyPass NFT whose holders may open /admin. */
-  adminNft: `0x${string}`;
+  adminNft: `0x${string}`
+  /** The USDT lite-PSM (KssLitePsm) users buy and sell KUSD through, and the pocket holding its USDT. */
+  psm: { address: `0x${string}`; pocket: `0x${string}` } | null
+  /** Cash-out to mobile money: the USDT warp route from KalyChain to Polygon. */
+  cashout: CashoutRoute | null
+}
+
+/**
+ * The USDT warp route a cash-out bridges over: USDT on KalyChain is the route's synthetic, and the
+ * Polygon router releases real USDT. The router's USDT balance is the most that can go out right now.
+ */
+export interface CashoutRoute {
+  destinationDomain: number
+  polygonRouter: `0x${string}`
+  polygonUsdt: `0x${string}`
+  polygonMailbox: `0x${string}`
 }
 
 const LEGACY_SETTINGS: NetworkSettings = {
   pegStable: 'USDC-A',
   peg: { kind: 'v2' },
   adminNft: '0x6B9557d1A52B9813288f45518D880C891b49491a',
-};
+  psm: null,
+  cashout: null,
+}
 
 /** 3890 has no V2 DEX: KUSD trades on KalySwap V3, against USDT (the USDT PSM's gem). */
 const KMT_SETTINGS: NetworkSettings = {
   pegStable: 'USDT-A',
   peg: { kind: 'v3', factory: '0x79e8391b5cD2a3Cfd43F1A4Eb1a55796331e07F5', feeTiers: [100, 500, 3000, 10000] },
   adminNft: '0x75A00d81c37c27f60F1C855cF200592B43B35a34',
-};
+  // kalychain-ops/files/kmt-3890/addresses.json: kusd.psmUsdt, hyperlane.polygonRouters.USDT
+  psm: { address: '0xe9d8b5b224A8e2d949b9819c8ECb72a6662ebF94', pocket: '0xab4538afb596c701e4cf1a7780a710a6e3406ee8' },
+  cashout: {
+    destinationDomain: 137,
+    polygonRouter: '0x2f7c83FC82A0e39A997c262e5BAB13176C275104',
+    polygonUsdt: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    polygonMailbox: '0x5d934f4e2f797775e53561bB72aca21ba36B96BB',
+  },
+}
 
 export function getNetworkSettings(chainId: number): NetworkSettings {
   switch (chainId) {
     case 3889:
     case 3888:
-      return LEGACY_SETTINGS;
+      return LEGACY_SETTINGS
     case 3890:
-      return KMT_SETTINGS;
+      return KMT_SETTINGS
     default:
-      throw new Error(`Unsupported chain ID: ${chainId}`);
+      throw new Error(`Unsupported chain ID: ${chainId}`)
   }
 }
 
@@ -340,30 +363,29 @@ export function getNetworkSettings(chainId: number): NetworkSettings {
  * Get collateral config by type
  */
 export function getCollateral(chainId: number, type: CollateralType): CollateralConfig {
-  const contracts = getContracts(chainId);
-  return contracts.collateral[type];
+  const contracts = getContracts(chainId)
+  return contracts.collateral[type]
 }
 
 /**
  * Get all collateral types
  */
 export function getAllCollateralTypes(): CollateralType[] {
-  return ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A'];
+  return ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A']
 }
 
 /**
  * Get collateral display name
  */
 export function getCollateralDisplayName(type: CollateralType): string {
-  const [symbol] = type.split('-');
-  return symbol;
+  const [symbol] = type.split('-')
+  return symbol
 }
 
 /**
  * Check if contracts are deployed (not zero addresses)
  */
 export function areContractsDeployed(chainId: number): boolean {
-  const contracts = getContracts(chainId);
-  return contracts.core.vat !== '0x0000000000000000000000000000000000000000';
+  const contracts = getContracts(chainId)
+  return contracts.core.vat !== '0x0000000000000000000000000000000000000000'
 }
-

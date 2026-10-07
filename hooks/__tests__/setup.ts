@@ -1,6 +1,6 @@
 /**
  * Test setup for hooks
- * 
+ *
  * Mocks wagmi hooks for testing without actual blockchain connection.
  */
 
@@ -45,4 +45,3 @@ export function resetMocks() {
   mockUseWriteContract.mockReset()
   mockUseWaitForTransactionReceipt.mockReset()
 }
-

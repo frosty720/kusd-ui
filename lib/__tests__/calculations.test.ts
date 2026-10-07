@@ -3,24 +3,24 @@
  * 100% coverage for all CDP and DeFi calculation functions
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
+  calculateAccruedFees,
+  calculateAuctionPrice,
   calculateCollateralRatio,
+  calculateCollateralValue,
+  calculateDSREarnings,
+  calculateHealthFactor,
+  calculateLiquidationPenalty,
   calculateLiquidationPrice,
   calculateMaxMint,
   calculateMaxWithdraw,
-  calculateHealthFactor,
-  calculateAccruedFees,
-  calculateTotalDebt,
-  calculateDSREarnings,
-  calculateAuctionPrice,
-  calculateRequiredCollateral,
-  calculateCollateralValue,
-  isPositionSafe,
-  calculateLiquidationPenalty,
   calculateNormalizedDebt,
+  calculateRequiredCollateral,
+  calculateTotalDebt,
+  isPositionSafe,
 } from '../calculations'
-import { WAD, RAY } from '../constants'
+import { RAY, WAD } from '../constants'
 
 describe('calculations.ts', () => {
   // ============================================
@@ -48,7 +48,7 @@ describe('calculations.ts', () => {
 
     it('should handle 150% collateral ratio', () => {
       // $15,000 collateral / $10,000 debt = 150%
-      const collateral = 75n * WAD / 10n // 7.5 ETH
+      const collateral = (75n * WAD) / 10n // 7.5 ETH
       const price = 2000n * WAD // $2000 per ETH
       const debt = 10000n * WAD // $10,000 debt
 
@@ -135,7 +135,7 @@ describe('calculations.ts', () => {
 
       const maxMint = calculateMaxMint(collateral, price, liquidationRatio, currentDebt)
       // 20000 / 1.5 - 5000 = 13333.33 - 5000 = 8333.33
-      const expected = (((20000n * WAD) * WAD) / ((15n * WAD) / 10n)) - 5000n * WAD
+      const expected = (20000n * WAD * WAD) / ((15n * WAD) / 10n) - 5000n * WAD
       expect(maxMint).toBe(expected)
     })
 
@@ -237,7 +237,7 @@ describe('calculations.ts', () => {
 
     it('should return 0 when at liquidation threshold', () => {
       // Exactly at 150% ratio - can't withdraw anything
-      const collateral = 75n * WAD / 10n // 7.5 ETH
+      const collateral = (75n * WAD) / 10n // 7.5 ETH
       const debt = 10000n * WAD
       const price = 2000n * WAD
       const liquidationRatio = (15n * WAD) / 10n

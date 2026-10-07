@@ -1,11 +1,11 @@
 /**
  * DeFi Math Operations
- * 
+ *
  * Fixed-point arithmetic operations for WAD, RAY, and RAD precision.
  * Based on MakerDAO DSS math libraries.
  */
 
-import { WAD, RAY, RAD } from './constants'
+import { RAD, RAY, WAD } from './constants'
 
 /**
  * WAD Math Operations (18 decimals)
@@ -100,7 +100,7 @@ export function radToRay(rad: bigint): bigint {
 
 /**
  * Power Operations
- * 
+ *
  * Used for calculating compound interest rates
  */
 
@@ -273,4 +273,3 @@ export function equals(a: bigint, b: bigint): boolean {
 export function abs(value: bigint): bigint {
   return value < 0n ? -value : value
 }
-

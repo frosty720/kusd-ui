@@ -94,4 +94,3 @@ export function getCurrentNetwork() {
  */
 export const APP_NETWORK: Chain = getCurrentNetwork()
 export const APP_CHAIN_ID: number = APP_NETWORK.id
-

@@ -1,6 +1,6 @@
 /**
  * DeFi Math Constants
- * 
+ *
  * MakerDAO DSS uses fixed-point arithmetic with different precision levels:
  * - WAD: 18 decimals (10^18) - Used for basic quantities
  * - RAY: 27 decimals (10^27) - Used for precise rates and ratios
@@ -8,9 +8,9 @@
  */
 
 // Precision constants
-export const WAD = 10n ** 18n  // 1e18 - 18 decimal precision
-export const RAY = 10n ** 27n  // 1e27 - 27 decimal precision
-export const RAD = 10n ** 45n  // 1e45 - 45 decimal precision
+export const WAD = 10n ** 18n // 1e18 - 18 decimal precision
+export const RAY = 10n ** 27n // 1e27 - 27 decimal precision
+export const RAD = 10n ** 45n // 1e45 - 45 decimal precision
 
 // Numeric constants for calculations
 export const ZERO = 0n
@@ -20,10 +20,10 @@ export const ONE_RAD = RAD
 
 /**
  * Collateral Type Identifiers (ilk)
- * 
+ *
  * These are bytes32 representations of collateral types.
  * Format: "TOKEN-VARIANT" padded to 32 bytes
- * 
+ *
  * Example: "WBTC-A" -> 0x574254432d41000000000000000000000000000000000000000000000000000
  */
 
@@ -32,7 +32,7 @@ export function stringToBytes32(str: string): `0x${string}` {
   // Pad string to 32 bytes
   const padded = str.padEnd(32, '\0')
   const hex = Array.from(padded)
-    .map(char => char.charCodeAt(0).toString(16).padStart(2, '0'))
+    .map((char) => char.charCodeAt(0).toString(16).padStart(2, '0'))
     .join('')
   return `0x${hex}` as `0x${string}`
 }
@@ -64,39 +64,38 @@ export const ILK_TO_SYMBOL: Record<string, string> = {
 
 /**
  * Token Decimals
- * 
+ *
  * Different tokens use different decimal precision
  */
 export const TOKEN_DECIMALS: Record<string, number> = {
-  'WBTC': 8,
-  'WETH': 18,
-  'USDT': 6,
-  'USDC': 6,
-  'DAI': 18,
-  'KUSD': 18,
-  'sKLC': 18,
-  'KLC': 18,
+  WBTC: 8,
+  WETH: 18,
+  USDT: 6,
+  USDC: 6,
+  DAI: 18,
+  KUSD: 18,
+  sKLC: 18,
+  KLC: 18,
 }
 
 /**
  * Minimum Values
  */
-export const MIN_VAULT_AMOUNT = 100n * WAD  // 100 KUSD minimum
+export const MIN_VAULT_AMOUNT = 100n * WAD // 100 KUSD minimum
 
 /**
  * Time Constants
  */
-export const SECONDS_PER_YEAR = 365n * 24n * 60n * 60n  // 31,536,000 seconds
+export const SECONDS_PER_YEAR = 365n * 24n * 60n * 60n // 31,536,000 seconds
 
 /**
  * Percentage Constants (in basis points)
  */
-export const BPS_BASE = 10000n  // 100% = 10,000 basis points
+export const BPS_BASE = 10000n // 100% = 10,000 basis points
 export const PERCENT_BASE = 100n
 
 /**
  * Default Values
  */
-export const DEFAULT_SLIPPAGE_BPS = 50n  // 0.5% slippage tolerance
-export const DEFAULT_DEADLINE_MINUTES = 20n  // 20 minutes transaction deadline
-
+export const DEFAULT_SLIPPAGE_BPS = 50n // 0.5% slippage tolerance
+export const DEFAULT_DEADLINE_MINUTES = 20n // 20 minutes transaction deadline

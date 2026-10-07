@@ -3,8 +3,8 @@
  * testnet explorer is a dead link for the user.
  */
 
-import { describe, it, expect } from 'vitest'
-import { getExplorerTxUrl, getExplorerAddressUrl } from '../explorer'
+import { describe, expect, it } from 'vitest'
+import { getExplorerAddressUrl, getExplorerTxUrl } from '../explorer'
 
 const HASH = `0x${'ab'.repeat(32)}`
 const ADDR = `0x${'cd'.repeat(20)}`

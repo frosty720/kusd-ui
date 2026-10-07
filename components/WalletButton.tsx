@@ -1,7 +1,7 @@
 'use client'
 
 import { ConnectButton, darkTheme } from 'thirdweb/react'
-import { thirdwebClient, thirdwebChains, twActiveChain, allWallets, SUPPORTED_TOKENS } from '@/config/thirdweb'
+import { allWallets, SUPPORTED_TOKENS, thirdwebChains, thirdwebClient, twActiveChain } from '@/config/thirdweb'
 
 // Brand the thirdweb modal + button to KUSD's amber-on-black system
 // (matches --color-primary #F59E0B / --color-primary-dark #D97706 in globals.css).

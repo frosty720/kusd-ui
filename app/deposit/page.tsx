@@ -1,20 +1,19 @@
 // @ts-nocheck
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import Image from 'next/image'
-import Navigation from '@/components/Navigation'
-import { useGemJoin, useTokenBalance, useTokenAllowance, useApproveToken, useSpotter, useVat, useOracle } from '@/hooks'
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import React, { useEffect, useState } from 'react'
+import { type Address, formatUnits } from 'viem'
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import ERC20ABI from '@/abis/ERC20.json'
-import { formatTokenAmount, parseTokenAmount, formatInputValue, formatCurrency, formatWAD, wadToToken } from '@/lib'
-import { getCollateral, type CollateralType } from '@/config/contracts'
+import Navigation from '@/components/Navigation'
+import { type CollateralType, getCollateral } from '@/config/contracts'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
+import { useApproveToken, useGemJoin, useOracle, useSpotter, useTokenAllowance, useTokenBalance, useVat } from '@/hooks'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { type Address, formatUnits } from 'viem'
-import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { formatCurrency, formatInputValue, formatTokenAmount, formatWAD, parseTokenAmount, wadToToken } from '@/lib'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -33,18 +32,14 @@ export default function DepositPage() {
   const { address } = useAccount()
 
   // Get selected collateral config
-  const selectedCollateral = collateralTypes.find(c => c.type === selectedCollateralType)!
+  const selectedCollateral = collateralTypes.find((c) => c.type === selectedCollateralType)!
   const collateralConfig = getCollateral(APP_CHAIN_ID, selectedCollateralType)
 
   // Get token balance
   const { data: tokenBalance } = useTokenBalance(collateralConfig.token as Address, address)
 
   // Get token allowance for GemJoin
-  const { data: allowance } = useTokenAllowance(
-    collateralConfig.token as Address,
-    address,
-    collateralConfig.join as Address
-  )
+  const { data: allowance } = useTokenAllowance(collateralConfig.token as Address, address, collateralConfig.join as Address)
 
   // Get GemJoin hooks
   const gemJoin = useGemJoin(APP_CHAIN_ID, selectedCollateralType)
@@ -55,7 +50,7 @@ export default function DepositPage() {
   const { data: gemBalance } = vat.useGem(collateralConfig.ilk as `0x${string}`, address)
   // Read locked collateral (ink) from user's CDP
   const { data: urnData } = vat.useUrn(collateralConfig.ilk as `0x${string}`, address)
-  const lockedBalance = urnData ? (urnData as any)[0] as bigint : 0n // ink (locked collateral in WAD)
+  const lockedBalance = urnData ? ((urnData as any)[0] as bigint) : 0n // ink (locked collateral in WAD)
   // Total deposited = unlocked + locked
   const totalDeposited = (typeof gemBalance === 'bigint' ? gemBalance : 0n) + lockedBalance
   const { data: ilkData } = vat.useIlk(collateralConfig.ilk as `0x${string}`)
@@ -69,8 +64,22 @@ export default function DepositPage() {
   const { data: oraclePriceData } = oracle.usePeek()
 
   // Approve and deposit hooks
-  const { approve, hash: approveHash, error: approveError, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
-  const { join, hash: depositHash, error: depositError, isPending: isDepositPending, isConfirming: isDepositConfirming, isSuccess: isDepositSuccess } = gemJoin.useJoin()
+  const {
+    approve,
+    hash: approveHash,
+    error: approveError,
+    isPending: isApprovePending,
+    isConfirming: isApproveConfirming,
+    isSuccess: isApproveSuccess,
+  } = useApproveToken()
+  const {
+    join,
+    hash: depositHash,
+    error: depositError,
+    isPending: isDepositPending,
+    isConfirming: isDepositConfirming,
+    isSuccess: isDepositSuccess,
+  } = gemJoin.useJoin()
 
   // Exit hook to withdraw unlocked collateral
   const { exit, hash: exitHash, error: exitError, isPending: isExitPending, isConfirming: isExitConfirming, isSuccess: isExitSuccess } = gemJoin.useExit()
@@ -107,7 +116,12 @@ export default function DepositPage() {
   useTxToast({ isSuccess: isMintSuccess, hash: mintHash, error: mintError, successMessage: 'Test tokens minted', errorMessage: 'Mint failed' })
 
   // Check if approval is needed
-  const needsApproval = !!(allowance !== undefined && typeof allowance === 'bigint' && amount && parseTokenAmount(amount, selectedCollateral.symbol) > allowance)
+  const needsApproval = !!(
+    allowance !== undefined &&
+    typeof allowance === 'bigint' &&
+    amount &&
+    parseTokenAmount(amount, selectedCollateral.symbol) > allowance
+  )
 
   // After join succeeds, lock the collateral in CDP with frob.
   // The `depositStep === 'depositing'` guard plus flipping to 'locking' BEFORE the
@@ -118,9 +132,7 @@ export default function DepositPage() {
 
       // Convert from token decimals to WAD (18 decimals) for frob
       // The Vat stores all collateral in WAD, so dink must be in WAD
-      const dinkWAD = collateralConfig.decimals === 18
-        ? depositedAmount
-        : depositedAmount * (10n ** BigInt(18 - collateralConfig.decimals))
+      const dinkWAD = collateralConfig.decimals === 18 ? depositedAmount : depositedAmount * 10n ** BigInt(18 - collateralConfig.decimals)
 
       // Lock collateral in CDP: dink = deposited amount in WAD, dart = 0 (no debt change)
       frob(
@@ -129,7 +141,7 @@ export default function DepositPage() {
         address,
         address,
         dinkWAD, // dink - lock collateral (in WAD)
-        0n // dart - no debt change
+        0n, // dart - no debt change
       )
     }
   }, [depositStep, isDepositSuccess, depositedAmount, address, frob, collateralConfig.ilk, collateralConfig.decimals])
@@ -153,11 +165,11 @@ export default function DepositPage() {
 
     // Mint amounts based on token decimals
     const mintAmounts: Record<string, bigint> = {
-      'WBTC': 10n * 10n ** 8n,        // 10 WBTC
-      'WETH': 100n * 10n ** 18n,      // 100 WETH
-      'USDT': 100000n * 10n ** 6n,    // 100,000 USDT
-      'USDC': 100000n * 10n ** 6n,    // 100,000 USDC
-      'DAI': 100000n * 10n ** 18n,    // 100,000 DAI
+      WBTC: 10n * 10n ** 8n, // 10 WBTC
+      WETH: 100n * 10n ** 18n, // 100 WETH
+      USDT: 100000n * 10n ** 6n, // 100,000 USDT
+      USDC: 100000n * 10n ** 6n, // 100,000 USDC
+      DAI: 100000n * 10n ** 18n, // 100,000 DAI
     }
 
     const amount = mintAmounts[selectedCollateral.symbol]
@@ -262,117 +274,111 @@ export default function DepositPage() {
   const currentPrice = oraclePrice > 0n ? formatWAD(oraclePrice, 2) : '0.00'
 
   // Calculate USD value
-  const usdValue = amount && oraclePrice > 0n ? (() => {
-    const amountTokenDecimals = parseTokenAmount(amount, selectedCollateral.symbol)
-    // Normalize to WAD (18 decimals) before multiplying by price
-    const decimals = BigInt(collateralConfig.decimals)
-    const amountWAD = collateralConfig.decimals === 18
-      ? amountTokenDecimals
-      : amountTokenDecimals * (10n ** (18n - decimals))
-    const value = (amountWAD * oraclePrice) / 10n ** 18n // WAD * WAD / WAD = WAD
-    return formatWAD(value, 2)
-  })() : '0.00'
+  const usdValue =
+    amount && oraclePrice > 0n
+      ? (() => {
+          const amountTokenDecimals = parseTokenAmount(amount, selectedCollateral.symbol)
+          // Normalize to WAD (18 decimals) before multiplying by price
+          const decimals = BigInt(collateralConfig.decimals)
+          const amountWAD = collateralConfig.decimals === 18 ? amountTokenDecimals : amountTokenDecimals * 10n ** (18n - decimals)
+          const value = (amountWAD * oraclePrice) / 10n ** 18n // WAD * WAD / WAD = WAD
+          return formatWAD(value, 2)
+        })()
+      : '0.00'
 
   // Render deposit display
   // @ts-ignore
-  const depositDisplay: any = ((address && selectedCollateral && totalDeposited > 0n) ? (
-    <div className="space-y-3" key="deposit-display">
-      {/* Total Deposited */}
-      <div className="flex justify-between items-center p-4 bg-[#0a0a0a]/50 rounded-lg border border-[#F59E0B]/30">
-        <div className="flex items-center gap-3">
-          <Image
-            src={selectedCollateral.icon}
-            alt={selectedCollateral.symbol}
-            width={40}
-            height={40}
-            className="w-10 h-10"
-          />
-          <div>
-            <div className="text-white font-medium">{selectedCollateral.symbol}</div>
-            <div className="text-[#6b7280] text-sm">{selectedCollateral.name}</div>
+  const depositDisplay: any = (
+    address && selectedCollateral && totalDeposited > 0n ? (
+      <div className="space-y-3" key="deposit-display">
+        {/* Total Deposited */}
+        <div className="flex justify-between items-center p-4 bg-[#0a0a0a]/50 rounded-lg border border-[#F59E0B]/30">
+          <div className="flex items-center gap-3">
+            <Image src={selectedCollateral.icon} alt={selectedCollateral.symbol} width={40} height={40} className="w-10 h-10" />
+            <div>
+              <div className="text-white font-medium">{selectedCollateral.symbol}</div>
+              <div className="text-[#6b7280] text-sm">{selectedCollateral.name}</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-white font-medium">
+              {formatWAD(totalDeposited, 6)} {selectedCollateral.symbol}
+            </div>
+            <div className="text-[#6b7280] text-sm">
+              {currentPrice && totalDeposited > 0n
+                ? formatCurrency(formatWAD((totalDeposited * BigInt(Math.floor(parseFloat(currentPrice) * 1e18))) / 10n ** 18n, 2))
+                : '$0.00'}
+            </div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-white font-medium">
-            {formatWAD(totalDeposited, 6)} {selectedCollateral.symbol}
-          </div>
-          <div className="text-[#6b7280] text-sm">
-            {currentPrice && totalDeposited > 0n ? formatCurrency(formatWAD((totalDeposited * BigInt(Math.floor(parseFloat(currentPrice) * 1e18))) / 10n ** 18n, 2)) : '$0.00'}
-          </div>
-        </div>
-      </div>
 
-      {/* Unlocked Collateral Warning */}
-      {typeof gemBalance === 'bigint' && gemBalance > 0n && (
-        <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-start space-x-2">
-              <svg className="w-5 h-5 text-yellow-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <div className="text-yellow-500 font-medium text-sm">Unlocked Collateral</div>
-                <div className="text-yellow-200/80 text-sm mt-1">
-                  You have {formatWAD(gemBalance, 6)} {selectedCollateral.symbol} deposited but not locked in your CDP. Lock it to use for minting KUSD.
+        {/* Unlocked Collateral Warning */}
+        {typeof gemBalance === 'bigint' && gemBalance > 0n && (
+          <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start space-x-2">
+                <svg aria-hidden="true" className="w-5 h-5 text-yellow-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <div className="text-yellow-500 font-medium text-sm">Unlocked Collateral</div>
+                  <div className="text-yellow-200/80 text-sm mt-1">
+                    You have {formatWAD(gemBalance, 6)} {selectedCollateral.symbol} deposited but not locked in your CDP. Lock it to use for minting KUSD.
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={handleWithdrawUnlocked}
-              disabled={isExitPending || isExitConfirming || !address}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isExitPending ? 'Confirm...' :
-               isExitConfirming ? 'Withdrawing...' :
-               'Withdraw to Wallet'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (gemBalance && address) {
-                  frob(
-                    collateralConfig.ilk as `0x${string}`,
-                    address,
-                    address,
-                    address,
-                    gemBalance,
-                    0n
-                  )
-                }
-              }}
-              disabled={isFrobPending || isFrobConfirming || !address}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isFrobPending ? 'Confirm...' :
-               isFrobConfirming ? 'Locking...' :
-               'Lock in CDP'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Breakdown */}
-      <div className="text-xs text-[#6b7280] space-y-1 px-2">
-        <div className="flex justify-between">
-          <span>Locked in CDP:</span>
-          <span>{formatWAD(lockedBalance, 6)} {selectedCollateral.symbol}</span>
-        </div>
-        {typeof gemBalance === 'bigint' && gemBalance > 0n && (
-          <div className="flex justify-between text-yellow-500">
-            <span>Unlocked:</span>
-            <span>{formatWAD(gemBalance, 6)} {selectedCollateral.symbol}</span>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={handleWithdrawUnlocked}
+                disabled={isExitPending || isExitConfirming || !address}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isExitPending ? 'Confirm...' : isExitConfirming ? 'Withdrawing...' : 'Withdraw to Wallet'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (gemBalance && address) {
+                    frob(collateralConfig.ilk as `0x${string}`, address, address, address, gemBalance, 0n)
+                  }
+                }}
+                disabled={isFrobPending || isFrobConfirming || !address}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isFrobPending ? 'Confirm...' : isFrobConfirming ? 'Locking...' : 'Lock in CDP'}
+              </button>
+            </div>
           </div>
         )}
+
+        {/* Breakdown */}
+        <div className="text-xs text-[#6b7280] space-y-1 px-2">
+          <div className="flex justify-between">
+            <span>Locked in CDP:</span>
+            <span>
+              {formatWAD(lockedBalance, 6)} {selectedCollateral.symbol}
+            </span>
+          </div>
+          {typeof gemBalance === 'bigint' && gemBalance > 0n && (
+            <div className="flex justify-between text-yellow-500">
+              <span>Unlocked:</span>
+              <span>
+                {formatWAD(gemBalance, 6)} {selectedCollateral.symbol}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  ) : (address && totalDeposited === 0n) ? (
-    <div className="text-center py-8 text-[#6b7280]">
-      No deposits yet. Deposit collateral to get started!
-    </div>
-  ) : null) as React.ReactNode
+    ) : address && totalDeposited === 0n ? (
+      <div className="text-center py-8 text-[#6b7280]">No deposits yet. Deposit collateral to get started!</div>
+    ) : null
+  ) as React.ReactNode
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
@@ -382,12 +388,8 @@ export default function DepositPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Deposit Collateral
-            </h1>
-            <p className="text-[#9ca3af] text-lg">
-              Deposit collateral to mint KUSD stablecoins
-            </p>
+            <h1 className="text-4xl font-bold text-white mb-4">Deposit Collateral</h1>
+            <p className="text-[#9ca3af] text-lg">Deposit collateral to mint KUSD stablecoins</p>
           </div>
 
           {/* Deposit Card */}
@@ -395,9 +397,7 @@ export default function DepositPage() {
             <form onSubmit={handleDeposit}>
               {/* Collateral Selection */}
               <div className="mb-6">
-                <label className="block text-[#9ca3af] text-sm font-medium mb-3">
-                  Select Collateral
-                </label>
+                <p className="block text-[#9ca3af] text-sm font-medium mb-3">Select Collateral</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {collateralTypes.map((collateral) => (
                     <button
@@ -412,13 +412,7 @@ export default function DepositPage() {
                       }`}
                     >
                       <div className="flex items-center justify-center mb-2">
-                        <Image
-                          src={collateral.icon}
-                          alt={collateral.symbol}
-                          width={32}
-                          height={32}
-                          className="w-8 h-8"
-                        />
+                        <Image src={collateral.icon} alt={collateral.symbol} width={32} height={32} className="w-8 h-8" />
                       </div>
                       <div className="text-white font-bold text-lg">{collateral.symbol}</div>
                       <div className="text-[#6b7280] text-xs mt-1">{collateral.name}</div>
@@ -429,11 +423,12 @@ export default function DepositPage() {
 
               {/* Amount Input */}
               <div className="mb-6">
-                <label className="block text-[#9ca3af] text-sm font-medium mb-2">
+                <label htmlFor="deposit-amount" className="block text-[#9ca3af] text-sm font-medium mb-2">
                   Amount
                 </label>
                 <div className="relative">
                   <input
+                    id="deposit-amount"
                     type="text"
                     value={amount}
                     onChange={(e) => handleAmountChange(e.target.value)}
@@ -441,9 +436,7 @@ export default function DepositPage() {
                     className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                     disabled={isPending || isConfirming}
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                    {selectedCollateral.symbol}
-                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">{selectedCollateral.symbol}</div>
                 </div>
                 <div className="flex justify-between mt-2">
                   <div className="flex gap-2">
@@ -468,7 +461,8 @@ export default function DepositPage() {
                     )}
                   </div>
                   <span className="text-sm text-[#6b7280]">
-                    Balance: {tokenBalance && typeof tokenBalance === 'bigint' ? formatTokenAmount(tokenBalance, selectedCollateral.symbol, 4) : '0.00'} {selectedCollateral.symbol}
+                    Balance: {tokenBalance && typeof tokenBalance === 'bigint' ? formatTokenAmount(tokenBalance, selectedCollateral.symbol, 4) : '0.00'}{' '}
+                    {selectedCollateral.symbol}
                   </span>
                 </div>
               </div>
@@ -499,30 +493,22 @@ export default function DepositPage() {
               {/* Success Message */}
               {isApproveSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ {selectedCollateral.symbol} approved successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ {selectedCollateral.symbol} approved successfully!</p>
                 </div>
               )}
               {isDepositSuccess && !isFrobSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ Collateral deposited! Locking in CDP...
-                  </p>
+                  <p className="text-green-400 text-sm">✅ Collateral deposited! Locking in CDP...</p>
                 </div>
               )}
               {isFrobSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ Collateral locked in CDP successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ Collateral locked in CDP successfully!</p>
                 </div>
               )}
               {isMintSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ Test tokens minted successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ Test tokens minted successfully!</p>
                 </div>
               )}
 
@@ -535,11 +521,7 @@ export default function DepositPage() {
                     disabled={isApprovePending || isApproveConfirming || !address}
                     className="w-full bg-[#262626] hover:bg-[#404040] text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isApprovePending
-                      ? 'Confirm in Wallet...'
-                      : isApproveConfirming
-                      ? 'Approving...'
-                      : `Approve ${selectedCollateral.symbol}`}
+                    {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : `Approve ${selectedCollateral.symbol}`}
                   </button>
                 )}
                 <button
@@ -550,16 +532,16 @@ export default function DepositPage() {
                   {!address
                     ? 'Connect Wallet'
                     : needsApproval
-                    ? 'Approve First'
-                    : isDepositPending
-                    ? 'Confirm Deposit...'
-                    : isDepositConfirming
-                    ? 'Depositing...'
-                    : isFrobPending
-                    ? 'Confirm Lock...'
-                    : isFrobConfirming
-                    ? 'Locking in CDP...'
-                    : 'Deposit Collateral'}
+                      ? 'Approve First'
+                      : isDepositPending
+                        ? 'Confirm Deposit...'
+                        : isDepositConfirming
+                          ? 'Depositing...'
+                          : isFrobPending
+                            ? 'Confirm Lock...'
+                            : isFrobConfirming
+                              ? 'Locking in CDP...'
+                              : 'Deposit Collateral'}
                 </button>
               </div>
             </form>
@@ -575,4 +557,3 @@ export default function DepositPage() {
     </div>
   )
 }
-

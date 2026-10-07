@@ -1,11 +1,11 @@
 /**
  * PSM (Peg Stability Module) Contract Hook
- * 
+ *
  * Hook for reading PSM contract data like tin/tout fees and balances.
  */
 
-import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
+import { useReadContract } from 'wagmi'
 import KssLitePsmABI from '@/abis/KssLitePsm.json'
 import { APP_CHAIN_ID } from '@/config/networks'
 
@@ -94,4 +94,3 @@ export function usePSM() {
     useGem,
   }
 }
-

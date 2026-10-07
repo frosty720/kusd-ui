@@ -1,14 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { WalletButton } from '@/components/WalletButton'
 import { WrongNetworkBanner } from '@/components/WrongNetworkBanner'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/buy', label: 'Buy KUSD' },
+  { href: '/buy', label: 'Buy / Sell' },
   { href: '/wrap', label: 'Wrap sKLC' },
   { href: '/deposit', label: 'Deposit' },
   { href: '/mint', label: 'Mint KUSD' },
@@ -26,13 +26,7 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <Image
-              src="/icons/logo.svg"
-              alt="KUSD Logo"
-              width={32}
-              height={32}
-              className="w-8 h-8"
-            />
+            <Image src="/icons/logo.svg" alt="KUSD Logo" width={32} height={32} className="w-8 h-8" />
             <span className="text-xl font-bold text-white">KUSD</span>
           </Link>
 
@@ -45,9 +39,7 @@ export default function Navigation() {
                   key={link.href}
                   href={link.href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-[#1a1a1a] text-white'
-                      : 'text-[#9ca3af] hover:text-white hover:bg-[#1a1a1a]/50'
+                    isActive ? 'bg-[#1a1a1a] text-white' : 'text-[#9ca3af] hover:text-white hover:bg-[#1a1a1a]/50'
                   }`}
                 >
                   {link.label}
@@ -72,9 +64,7 @@ export default function Navigation() {
                   key={link.href}
                   href={link.href}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-[#1a1a1a] text-white'
-                      : 'text-[#9ca3af] hover:text-white hover:bg-[#1a1a1a]/50'
+                    isActive ? 'bg-[#1a1a1a] text-white' : 'text-[#9ca3af] hover:text-white hover:bg-[#1a1a1a]/50'
                   }`}
                 >
                   {link.label}
@@ -88,4 +78,3 @@ export default function Navigation() {
     </nav>
   )
 }
-

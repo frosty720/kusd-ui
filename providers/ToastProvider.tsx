@@ -7,7 +7,7 @@
  * pushes one; transaction toasts can carry an explorer link (see `useTxToast`).
  */
 
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'
 
@@ -80,12 +80,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   </a>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => dismiss(t.id)}
-                className="text-[#6b7280] hover:text-white text-sm leading-none"
-                aria-label="Dismiss"
-              >
+              <button type="button" onClick={() => dismiss(t.id)} className="text-[#6b7280] hover:text-white text-sm leading-none" aria-label="Dismiss">
                 ✕
               </button>
             </div>

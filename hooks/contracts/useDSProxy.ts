@@ -1,11 +1,11 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address, encodeFunctionData } from 'viem'
-import { getContracts } from '@/config/contracts'
-import ProxyRegistryABI from '@/abis/ProxyRegistry.json'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import DSProxyABI from '@/abis/DSProxy.json'
 import KssProxyActionsABI from '@/abis/KssProxyActions.json'
+import ProxyRegistryABI from '@/abis/ProxyRegistry.json'
+import { getContracts } from '@/config/contracts'
 import { APP_CHAIN_ID } from '@/config/networks'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 /**
  * Hook for interacting with DSProxy infrastructure
@@ -54,11 +54,7 @@ export function useDSProxy(chainId: number = APP_CHAIN_ID) {
   const executeAction = (proxyAddress: Address, actionData: `0x${string}`) => {
     // Use the execute(address,bytes) overload by specifying the exact ABI item
     const executeAbi = DSProxyABI.find(
-      (item: any) =>
-        item.type === 'function' &&
-        item.name === 'execute' &&
-        item.inputs.length === 2 &&
-        item.inputs[0].type === 'address'
+      (item: any) => item.type === 'function' && item.name === 'execute' && item.inputs.length === 2 && item.inputs[0].type === 'address',
     )
 
     writeContract({
@@ -109,12 +105,12 @@ export function useDSProxy(chainId: number = APP_CHAIN_ID) {
     useHasProxy,
     buildProxy,
     executeAction,
-    
+
     // Action encoders
     encodeJoinAction,
     encodeExitAction,
     encodeExitAllAction,
-    
+
     // Transaction state
     isPending,
     isConfirming,
@@ -123,4 +119,3 @@ export function useDSProxy(chainId: number = APP_CHAIN_ID) {
     hash,
   }
 }
-

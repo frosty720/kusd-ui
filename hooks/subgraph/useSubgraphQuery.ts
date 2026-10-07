@@ -1,8 +1,8 @@
 'use client'
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { querySubgraph, isSubgraphChain } from '@/lib/subgraph'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { APP_CHAIN_ID } from '@/config/networks'
+import { isSubgraphChain, querySubgraph } from '@/lib/subgraph'
 
 /**
  * Thin react-query wrapper around a subgraph query for the app's chain, gated to chains that

@@ -1,45 +1,44 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAccount } from 'wagmi'
-import { formatUnits } from 'viem'
 import Navigation from '@/components/Navigation'
-import { useFlapper, useFlopper, useClipper, useSKLC, useVat } from '@/hooks'
+import { type CollateralType } from '@/config/contracts'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { useClipper, useFlapper, useFlopper, useSKLC, useVat } from '@/hooks'
 import { useActiveAuctions } from '@/hooks/subgraph/useActiveAuctions'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, formatRAD, formatRAY, parseWAD } from '@/lib'
-import { type CollateralType } from '@/config/contracts'
-import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { formatRAD, formatRAY, formatWAD, parseWAD } from '@/lib'
 
 type AuctionType = 'surplus' | 'debt' | 'collateral'
 
 interface FlapperAuction {
   id: bigint
-  lot: bigint  // KUSD amount
-  bid: bigint  // sKLC bid
-  guy: string  // Current high bidder
-  tic: bigint  // Bid expiry time
-  end: bigint  // Auction end time
+  lot: bigint // KUSD amount
+  bid: bigint // sKLC bid
+  guy: string // Current high bidder
+  tic: bigint // Bid expiry time
+  end: bigint // Auction end time
 }
 
 interface FlopperAuction {
   id: bigint
-  bid: bigint  // KUSD bid (fixed)
-  lot: bigint  // sKLC amount (decreasing)
-  guy: string  // Current high bidder
-  tic: bigint  // Bid expiry time
-  end: bigint  // Auction end time
+  bid: bigint // KUSD bid (fixed)
+  lot: bigint // sKLC amount (decreasing)
+  guy: string // Current high bidder
+  tic: bigint // Bid expiry time
+  end: bigint // Auction end time
 }
 
 interface ClipperAuction {
   id: bigint
-  pos: bigint  // Index in active array
-  tab: bigint  // KUSD to raise
-  lot: bigint  // Collateral amount
-  usr: string  // Vault owner
-  tic: bigint  // Auction start time
-  top: bigint  // Starting price
+  pos: bigint // Index in active array
+  tab: bigint // KUSD to raise
+  lot: bigint // Collateral amount
+  usr: string // Vault owner
+  tic: bigint // Auction start time
+  top: bigint // Starting price
 }
 
 const collateralTypes: CollateralType[] = ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A']
@@ -186,44 +185,37 @@ export default function AuctionsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">
-            KUSD Auctions
-          </h1>
-          <p className="text-[#9ca3af] text-lg">
-            Participate in surplus, debt, and collateral liquidation auctions
-          </p>
+          <h1 className="text-4xl font-bold text-white mb-4">KUSD Auctions</h1>
+          <p className="text-[#9ca3af] text-lg">Participate in surplus, debt, and collateral liquidation auctions</p>
         </div>
 
         {/* Auction Type Tabs */}
         <div className="flex bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-1 mb-8 max-w-2xl mx-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('surplus')}
             className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'surplus'
-                ? 'bg-[#F59E0B] text-white'
-                : 'text-[#6b7280] hover:text-white'
+              activeTab === 'surplus' ? 'bg-[#F59E0B] text-white' : 'text-[#6b7280] hover:text-white'
             }`}
           >
             <div>Surplus (Flapper)</div>
             <div className="text-xs mt-1 opacity-75">{activeFlapCount} active</div>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('debt')}
             className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'debt'
-                ? 'bg-[#F59E0B] text-white'
-                : 'text-[#6b7280] hover:text-white'
+              activeTab === 'debt' ? 'bg-[#F59E0B] text-white' : 'text-[#6b7280] hover:text-white'
             }`}
           >
             <div>Debt (Flopper)</div>
             <div className="text-xs mt-1 opacity-75">{activeFlopCount} active</div>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('collateral')}
             className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'collateral'
-                ? 'bg-[#F59E0B] text-white'
-                : 'text-[#6b7280] hover:text-white'
+              activeTab === 'collateral' ? 'bg-[#F59E0B] text-white' : 'text-[#6b7280] hover:text-white'
             }`}
           >
             <div>Collateral (Clipper)</div>
@@ -257,8 +249,11 @@ export default function AuctionsPage() {
               </p>
               {/* Collateral selector */}
               <div className="mt-4">
-                <label className="text-[#9ca3af] text-xs mb-2 block">Select Collateral Type:</label>
+                <label htmlFor="auction-collateral" className="text-[#9ca3af] text-xs mb-2 block">
+                  Select Collateral Type:
+                </label>
                 <select
+                  id="auction-collateral"
                   value={selectedCollateral}
                   onChange={(e) => setSelectedCollateral(e.target.value as CollateralType)}
                   className="bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
@@ -285,17 +280,13 @@ export default function AuctionsPage() {
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-4">
               <div className="text-[#6b7280] text-sm mb-1">Total Auctions</div>
               <div className="text-white font-bold text-2xl">
-                {activeTab === 'surplus' ? activeFlapCount :
-                 activeTab === 'debt' ? activeFlopCount :
-                 activeClipCount}
+                {activeTab === 'surplus' ? activeFlapCount : activeTab === 'debt' ? activeFlopCount : activeClipCount}
               </div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-4">
               <div className="text-[#6b7280] text-sm mb-1">Contract Address</div>
               <div className="text-white font-mono text-xs truncate">
-                {activeTab === 'surplus' ? flapper.address :
-                 activeTab === 'debt' ? flopper.address :
-                 clipper.address}
+                {activeTab === 'surplus' ? flapper.address : activeTab === 'debt' ? flopper.address : clipper.address}
               </div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-4">
@@ -316,7 +307,12 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active surplus auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Surplus auctions start when the system has excess KUSD</p>
                 </div>
-              ) : latestFlapBid && typeof latestFlapBid === 'object' && latestFlapBid !== null && 'lot' in latestFlapBid && typeof latestFlapBid.lot === 'bigint' && latestFlapBid.lot > 0n ? (
+              ) : latestFlapBid &&
+                typeof latestFlapBid === 'object' &&
+                latestFlapBid !== null &&
+                'lot' in latestFlapBid &&
+                typeof latestFlapBid.lot === 'bigint' &&
+                latestFlapBid.lot > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -346,6 +342,7 @@ export default function AuctionsPage() {
                       <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
                         <p className="text-[#FBBF24] text-sm mb-2">You need to approve sKLC spending first</p>
                         <button
+                          type="button"
                           onClick={handleApproveSklcFlapper}
                           disabled={isApprovingSklcFlapper}
                           className="bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -364,6 +361,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
+                          type="button"
                           onClick={() => flapKicks && typeof flapKicks === 'bigint' && handleTendBid(flapKicks, (latestFlapBid as any).lot)}
                           disabled={isTendPending || isTendConfirming || !bidAmounts[`flap-${flapKicks}`]}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -397,7 +395,12 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active debt auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Debt auctions start when the system has bad debt to cover</p>
                 </div>
-              ) : latestFlopBid && typeof latestFlopBid === 'object' && latestFlopBid !== null && 'bid' in latestFlopBid && typeof latestFlopBid.bid === 'bigint' && latestFlopBid.bid > 0n ? (
+              ) : latestFlopBid &&
+                typeof latestFlopBid === 'object' &&
+                latestFlopBid !== null &&
+                'bid' in latestFlopBid &&
+                typeof latestFlopBid.bid === 'bigint' &&
+                latestFlopBid.bid > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -425,6 +428,7 @@ export default function AuctionsPage() {
                       <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
                         <p className="text-[#FBBF24] text-sm mb-2">You need to approve Vat KUSD spending first</p>
                         <button
+                          type="button"
                           onClick={handleHopeFlopper}
                           disabled={isHopingFlopper}
                           className="bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -443,6 +447,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
+                          type="button"
                           onClick={() => flopKicks && typeof flopKicks === 'bigint' && handleDentBid(flopKicks, (latestFlopBid as any).bid)}
                           disabled={isDentPending || isDentConfirming || !bidAmounts[`flop-${flopKicks}`]}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -477,7 +482,12 @@ export default function AuctionsPage() {
                   <div className="text-[#6b7280] text-lg">No active {collateralSymbols[selectedCollateral]} auctions</div>
                   <p className="text-[#6b7280] text-sm mt-2">Collateral auctions start when vaults are liquidated</p>
                 </div>
-              ) : latestClipSale && typeof latestClipSale === 'object' && latestClipSale !== null && 'lot' in latestClipSale && typeof latestClipSale.lot === 'bigint' && latestClipSale.lot > 0n ? (
+              ) : latestClipSale &&
+                typeof latestClipSale === 'object' &&
+                latestClipSale !== null &&
+                'lot' in latestClipSale &&
+                typeof latestClipSale.lot === 'bigint' &&
+                latestClipSale.lot > 0n ? (
                 <div className="space-y-4">
                   <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -490,7 +500,9 @@ export default function AuctionsPage() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">Collateral Available</div>
-                        <div className="text-white font-medium">{formatWAD((latestClipSale as any).lot, 18)} {collateralSymbols[selectedCollateral]}</div>
+                        <div className="text-white font-medium">
+                          {formatWAD((latestClipSale as any).lot, 18)} {collateralSymbols[selectedCollateral]}
+                        </div>
                       </div>
                       <div>
                         <div className="text-[#6b7280] text-sm mb-1">KUSD to Raise</div>
@@ -517,6 +529,7 @@ export default function AuctionsPage() {
                       <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
                         <p className="text-[#FBBF24] text-sm mb-2">You need to approve Vat KUSD spending first</p>
                         <button
+                          type="button"
                           onClick={handleHopeClipper}
                           disabled={isHopingClipper}
                           className="bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -535,6 +548,7 @@ export default function AuctionsPage() {
                           className="flex-1 bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                         />
                         <button
+                          type="button"
                           onClick={() => clipKicks && typeof clipKicks === 'bigint' && handleTakeBid(clipKicks)}
                           disabled={isTakePending || isTakeConfirming || !bidAmounts[`clip-${clipKicks}`] || clipPrice === 0n}
                           className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold px-6 py-2 rounded-lg transition-all disabled:opacity-50"
@@ -561,4 +575,3 @@ export default function AuctionsPage() {
     </div>
   )
 }
-
