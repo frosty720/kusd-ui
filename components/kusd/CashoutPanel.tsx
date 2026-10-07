@@ -146,8 +146,6 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
     const gemAmt = plan.gemAmt - (plan.gemAmt % CENT_USDT)
     return gemAmt === 0n ? null : { gemAmt, cost: psmBuyCost(gemAmt, GEM.decimals, tout) }
   }
-  /** A USDT limit, rounded DOWN to cents: typing the number shown must always go through. */
-  const usdtLimit = (value: bigint) => `${showAmount(value - (value % CENT_USDT), GEM.decimals, 2)} ${GEM.symbol}`
   const halted = psm?.tout === PSM_HALTED
   const kusdIn = parseAmount(input, KUSD.decimals)
   const exactPlan = psm && !halted ? planCashout(kusdIn, psm.tout, GEM.decimals) : null
@@ -155,11 +153,7 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   const problem = cashoutProblem({ plan, halted, kusdBalance: wallet?.kusdBalance, pocketGem: psm?.pocketGem, collateral })
   const invalidAmount = input.trim() !== '' && !plan && !halted
   const rounded = Boolean(plan && kusdIn !== null && plan.cost < kusdIn)
-  const available = psm && collateral !== undefined ? (psm.pocketGem < collateral ? psm.pocketGem : collateral) : undefined
   const busy = pending
-  /** The most KUSD that can go out now: the wallet balance, capped by what the PSM and Polygon can pay. */
-  const capKusd = psm && available !== undefined ? psmBuyCost(available, GEM.decimals, psm.tout) : undefined
-  const maxKusd = wallet && capKusd !== undefined && capKusd < wallet.kusdBalance ? capKusd : wallet?.kusdBalance
   const feeLabel = !psm || halted ? '—' : psmFeeLabel(psm.tout)
   /** KMT the cash-out's transactions can cost; a new in-app wallet holds none. */
   const kmtNeeded =
@@ -171,8 +165,9 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   if (problem?.key === 'halted') message = 'Cash-outs are paused.'
   else if (invalidAmount) message = 'Enter a valid amount'
   else if (problem?.key === 'insufficient') message = 'Insufficient KUSD balance'
-  else if (problem?.key === 'pocket') message = `The PSM can pay out only ${usdtLimit(problem.limit)} right now.`
-  else if (problem?.key === 'collateral') message = `Only ${usdtLimit(problem.limit)} can be cashed out right now. Try a smaller amount, or try again later.`
+  // The PSM pocket and the Polygon router limit cash-outs, but their balances are never shown.
+  else if (problem?.key === 'pocket' || problem?.key === 'collateral')
+    message = 'This amount can’t be cashed out right now. Try a smaller amount, or try again later.'
   else if (plan && minUsd && plan.gemAmt < parseUnits(minUsd, GEM.decimals)) message = `The minimum cash-out is $${minUsd}.`
   else if (plan && maxUsd && plan.gemAmt > parseUnits(maxUsd, GEM.decimals)) message = `The maximum cash-out is $${maxUsd}.`
   else if (wallet && kmtNeeded !== undefined && wallet.kmtBalance < kmtNeeded)
@@ -415,10 +410,7 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
               <button
                 type="button"
                 className="font-semibold text-[#F59E0B] hover:underline"
-                onClick={() => {
-                  const max = maxKusd ?? wallet.kusdBalance
-                  setInput(exactAmount(max - (max % CENT_KUSD), KUSD.decimals))
-                }}
+                onClick={() => setInput(exactAmount(wallet.kusdBalance - (wallet.kusdBalance % CENT_KUSD), KUSD.decimals))}
               >
                 Max
               </button>
@@ -522,7 +514,6 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
         <Row label="Rate" value="1 KUSD = 1 USDT" />
         <Row label="Fee" value={feeLabel} />
         <Row label="Arrival" value="~10–15 min" />
-        <Row label="Available to cash out" value={available !== undefined ? usdtLimit(available) : '—'} />
       </dl>
 
       <div className="mt-5 space-y-3 border-t border-[#262626] pt-5">

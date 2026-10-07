@@ -1,0 +1,84 @@
+/**
+ * The cash-out limit is read server-side through the paid Polygon RPC (POLYGON_RPC_URL, shared with
+ * the bridge). However many visitors ask, the RPC sees at most one read per TTL, failures included,
+ * and the URL (which carries the key) never leaves the server.
+ */
+import { encodeAbiParameters } from 'viem'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { kusdTrade } from '@/config/kusdTrade'
+
+const route = kusdTrade(3890)!.cashout!
+const RPC = 'https://matic.example/secret-key'
+
+async function load(env: { POLYGON_RPC_URL?: string }) {
+  vi.resetModules()
+  vi.stubEnv('POLYGON_RPC_URL', env.POLYGON_RPC_URL ?? '')
+  return import('../polygon-server')
+}
+
+function stubRpc(balance: bigint | Error) {
+  const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+    if (balance instanceof Error) throw balance
+    const { id } = JSON.parse(String(init?.body)) as { id: number }
+    return new Response(JSON.stringify({ jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'uint256' }], [balance]) }), { status: 200 })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
+
+describe('cachedRead', () => {
+  it('shares one read among concurrent callers and serves it until the TTL runs out', async () => {
+    const { cachedRead } = await load({})
+    let now = 0
+    const read = vi.fn(async () => 7n)
+    const get = cachedRead(read, 60_000, () => now)
+    expect(await Promise.all([get(), get(), get()])).toEqual([7n, 7n, 7n])
+    now = 59_999
+    await get()
+    expect(read).toHaveBeenCalledTimes(1)
+    now = 60_000
+    await get()
+    expect(read).toHaveBeenCalledTimes(2)
+  })
+
+  it('remembers a failure for the TTL too, so a failing RPC is not asked again on every request', async () => {
+    const { cachedRead } = await load({})
+    let now = 0
+    const read = vi.fn(async () => {
+      throw new Error('429')
+    })
+    const get = cachedRead(read, 60_000, () => now)
+    await expect(get()).rejects.toThrow('429')
+    await expect(get()).rejects.toThrow('429')
+    expect(read).toHaveBeenCalledTimes(1)
+    now = 60_000
+    await expect(get()).rejects.toThrow('429')
+    expect(read).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('cashoutCapacity', () => {
+  it("reads the router's USDT through POLYGON_RPC_URL", async () => {
+    const fetchMock = stubRpc(592_999_040n)
+    const { cashoutCapacity } = await load({ POLYGON_RPC_URL: RPC })
+    expect(await cashoutCapacity()).toBe(592_999_040n)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(String(url)).toBe(RPC)
+    const call = JSON.parse(String(init.body)) as { method: string; params: [{ to: string; data: string }] }
+    expect(call.method).toBe('eth_call')
+    expect(call.params[0].to.toLowerCase()).toBe(route.polygonUsdt.toLowerCase())
+    expect(call.params[0].data.toLowerCase()).toContain(route.polygonRouter.slice(2).toLowerCase())
+  })
+
+  it('refuses without asking anyone when POLYGON_RPC_URL is not set', async () => {
+    const fetchMock = stubRpc(1n)
+    const { cashoutCapacity } = await load({})
+    await expect(cashoutCapacity()).rejects.toThrow(/not configured/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
