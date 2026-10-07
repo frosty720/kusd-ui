@@ -1,12 +1,13 @@
 import { createPublicClient, fallback, http } from 'viem'
 import { polygon } from 'viem/chains'
 
-const PUBLIC_POLYGON_RPC = 'https://polygon-rpc.com'
+// polygon-rpc.com now refuses keyless requests (401, 2026-10-07); publicnode answers.
+const PUBLIC_POLYGON_RPC = 'https://polygon-bor-rpc.publicnode.com'
 
 /**
- * Polygon RPCs for the cash-out's two reads (the route's USDT balance, delivered()): an explicit
- * NEXT_PUBLIC_POLYGON_RPC_URL, else thirdweb's RPC under the app's client id (as KalySwap does), then
- * the public endpoint as a fallback.
+ * The browser's Polygon RPCs: delivered() polling, and the route's USDT balance when our server route
+ * (/api/ramp/cashout-capacity, the paid RPC) is down. An explicit NEXT_PUBLIC_POLYGON_RPC_URL, else
+ * thirdweb's RPC under the app's client id (as KalySwap does), then the public endpoint as a fallback.
  */
 export function polygonRpcUrls(explicitUrl?: string, thirdwebClientId?: string): string[] {
   const primary = explicitUrl || (thirdwebClientId ? `https://137.rpc.thirdweb.com/${thirdwebClientId}` : '')

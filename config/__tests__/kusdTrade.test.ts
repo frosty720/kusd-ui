@@ -33,8 +33,8 @@ describe('kusdTrade', () => {
 
 describe('polygonRpcUrls', () => {
   it('prefers an explicit RPC, then thirdweb under the app client id, then the public endpoint', () => {
-    expect(polygonRpcUrls('https://polygon.example/rpc', 'abc')).toEqual(['https://polygon.example/rpc', 'https://polygon-rpc.com'])
-    expect(polygonRpcUrls(undefined, 'abc')).toEqual(['https://137.rpc.thirdweb.com/abc', 'https://polygon-rpc.com'])
-    expect(polygonRpcUrls('', '')).toEqual(['https://polygon-rpc.com'])
+    expect(polygonRpcUrls('https://polygon.example/rpc', 'abc')).toEqual(['https://polygon.example/rpc', 'https://polygon-bor-rpc.publicnode.com'])
+    expect(polygonRpcUrls(undefined, 'abc')).toEqual(['https://137.rpc.thirdweb.com/abc', 'https://polygon-bor-rpc.publicnode.com'])
+    expect(polygonRpcUrls('', '')).toEqual(['https://polygon-bor-rpc.publicnode.com'])
   })
 })

@@ -38,12 +38,28 @@ export interface CashoutArgs {
   kusdAllowance: bigint
 }
 
-/** USDT held by the Polygon side of the route: the most that can be cashed out right now. One eth_call a minute. */
+/**
+ * USDT held by the Polygon side of the route: the most that can be cashed out right now. Our server
+ * route reads it through the paid RPC (cached there); if the route is down, the browser's own Polygon
+ * RPC answers.
+ */
+async function readCollateral(route: CashoutRoute): Promise<bigint> {
+  try {
+    const res = await fetch('/api/ramp/cashout-capacity')
+    const body = (await res.json()) as { collateral?: unknown }
+    if (res.ok && typeof body.collateral === 'string' && /^\d+$/.test(body.collateral)) return BigInt(body.collateral)
+  } catch {
+    // the browser RPC answers below
+  }
+  return polygonClient.readContract({ address: route.polygonUsdt, abi: erc20Abi, functionName: 'balanceOf', args: [route.polygonRouter] })
+}
+
+/** The cash-out limit for the form (never shown, only enforced). Refreshed every minute. */
 export function usePolygonCollateral(route: CashoutRoute) {
   return useQuery({
     queryKey: ['kusdCashoutCollateral'],
     refetchInterval: 60_000,
-    queryFn: () => polygonClient.readContract({ address: route.polygonUsdt, abi: erc20Abi, functionName: 'balanceOf', args: [route.polygonRouter] }),
+    queryFn: () => readCollateral(route),
   })
 }
 
@@ -69,7 +85,7 @@ export function useCashout(trade: KusdTrade, route: CashoutRoute) {
     async (gemAmt: bigint): Promise<{ fee: bigint; mailbox: `0x${string}` }> => {
       if (!kaly) throw new UserError('Could not reach KalyChain. Please try again.')
       const [collateral, fee, mailbox] = await Promise.all([
-        polygonClient.readContract({ address: route.polygonUsdt, abi: erc20Abi, functionName: 'balanceOf', args: [route.polygonRouter] }),
+        readCollateral(route),
         kaly.readContract({ address: trade.gem.address, abi: warpRouteAbi, functionName: 'quoteGasPayment', args: [route.destinationDomain] }),
         kaly.readContract({ address: trade.gem.address, abi: warpRouteAbi, functionName: 'mailbox' }),
       ])

@@ -56,7 +56,19 @@ function hook() {
 }
 const sent = () => writeContractAsync.mock.calls.map(([r]) => r.functionName)
 
+/** Our server route for the limit (the paid RPC behind it); down by default, so the browser RPC answers. */
+let capacityRoute: (() => Response) | null = null
+
 beforeEach(() => {
+  capacityRoute = null
+  polygonRead.mockClear()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL | Request) => {
+      if (String(input) === '/api/ramp/cashout-capacity' && capacityRoute) return capacityRoute()
+      throw new TypeError('fetch failed')
+    }),
+  )
   collateral = 194n * USDT
   walletUsdt = [0n, 50n * USDT]
   writeContractAsync.mockClear()
@@ -64,7 +76,10 @@ beforeEach(() => {
   waitForTransactionReceipt.mockImplementation(async () => ({ status: 'success' }))
   getTransactionReceipt.mockClear()
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('useCashout', () => {
   it('approves the exact KUSD, swaps, then bridges the same USDT to the recipient, and reads the message id', async () => {
@@ -72,6 +87,25 @@ describe('useCashout', () => {
     expect(sent()).toEqual(['approve', 'buyGem', 'transferRemote'])
     expect(writeContractAsync.mock.calls[2][0]).toMatchObject({ args: [137, `0x000000000000000000000000${TREASURY.slice(2)}`, plan.gemAmt] })
     expect(result).toEqual({ gemAmt: plan.gemAmt, recipient: TREASURY, hash: '0xtransferRemote', messageId: MESSAGE_ID })
+  })
+
+  it("takes the limit from our server route (the paid RPC) and skips the browser's Polygon RPC", async () => {
+    capacityRoute = () => new Response(JSON.stringify({ collateral: String(194n * USDT) }), { status: 200 })
+    await hook().cashout({ plan, recipient: TREASURY, kusdAllowance: 0n })
+    expect(sent()).toEqual(['approve', 'buyGem', 'transferRemote'])
+    expect(polygonRead).not.toHaveBeenCalled()
+  })
+
+  it("still blocks on the route's limit, and falls back to the browser RPC when the route is down or answers nonsense", async () => {
+    capacityRoute = () => new Response(JSON.stringify({ collateral: String(49n * USDT) }), { status: 200 })
+    await expect(hook().cashout({ plan, recipient: TREASURY, kusdAllowance: 0n })).rejects.toBeInstanceOf(UserError)
+    expect(writeContractAsync).not.toHaveBeenCalled()
+
+    capacityRoute = () => new Response(JSON.stringify({ error: 'unavailable' }), { status: 503 })
+    await hook().resumeBridge({ gemAmt: plan.gemAmt, recipient: TREASURY })
+    capacityRoute = () => new Response(JSON.stringify({ collateral: '-1' }), { status: 200 })
+    await hook().resumeBridge({ gemAmt: plan.gemAmt, recipient: TREASURY })
+    expect(polygonRead).toHaveBeenCalledTimes(2)
   })
 
   it('sends nothing when Polygon holds less USDT than the cash-out', async () => {
