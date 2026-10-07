@@ -10,8 +10,8 @@
 
 import { useEffect, useRef } from 'react'
 import { useChainId } from 'wagmi'
-import { useToast } from '@/providers/ToastProvider'
 import { getExplorerTxUrl } from '@/lib/explorer'
+import { useToast } from '@/providers/ToastProvider'
 
 interface TxToastOptions {
   isSuccess?: boolean

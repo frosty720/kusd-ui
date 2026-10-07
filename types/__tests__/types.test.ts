@@ -1,46 +1,13 @@
 /**
  * Type Definition Tests
- * 
+ *
  * These tests verify that type definitions are correctly structured
  * and can be used as expected.
  */
 
-import { describe, it, expect } from 'vitest'
-import type {
-  Urn,
-  Ilk,
-  SpotIlk,
-  PotData,
-  Sale,
-  AuctionStatus,
-  FlapBid,
-  FlopBid,
-  TransactionStatus,
-  TokenInfo,
-  TokenBalance,
-  CollateralSymbol,
-  CollateralVariant,
-  CollateralIlk,
-  NetworkConfig,
-  OraclePrice,
-  SystemState,
-} from '../contracts'
-import type {
-  CDPPosition,
-  CDPActionType,
-  CDPAction,
-  CDPTransaction,
-  CDPSummary,
-  CollateralTypeInfo,
-  CDPOperationResult,
-  CDPValidation,
-  DSRPosition,
-  DSRAction,
-  CollateralAuction,
-  SurplusAuction,
-  DebtAuction,
-  UserPortfolio,
-} from '../cdp'
+import { describe, expect, it } from 'vitest'
+import type { CDPActionType, CDPPosition, DSRPosition, UserPortfolio } from '../cdp'
+import type { CollateralIlk, Ilk, PotData, TokenInfo, TransactionStatus, Urn } from '../contracts'
 
 describe('Type Definitions', () => {
   describe('Contract Types', () => {
@@ -131,14 +98,7 @@ describe('Type Definitions', () => {
     })
 
     it('should validate CDPActionType values', () => {
-      const actions: CDPActionType[] = [
-        'deposit',
-        'withdraw',
-        'mint',
-        'repay',
-        'depositAndMint',
-        'repayAndWithdraw',
-      ]
+      const actions: CDPActionType[] = ['deposit', 'withdraw', 'mint', 'repay', 'depositAndMint', 'repayAndWithdraw']
       expect(actions).toHaveLength(6)
     })
 
@@ -174,4 +134,3 @@ describe('Type Definitions', () => {
     })
   })
 })
-

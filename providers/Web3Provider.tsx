@@ -1,9 +1,9 @@
 'use client'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
-import { WagmiProvider, createConfig, http } from 'wagmi'
 import { ThirdwebProvider } from 'thirdweb/react'
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+import { createConfig, http, WagmiProvider } from 'wagmi'
 import { APP_NETWORK } from '@/config/networks'
 import { useThirdwebWagmiBridge } from '@/config/thirdwebBridge'
 import { ToastProvider } from '@/providers/ToastProvider'

@@ -25,9 +25,7 @@ export const getTransactionGasConfig = () => TRANSACTION_GAS_CONFIG
 // Gas settings with optional overrides (e.g. a per-call `gas` limit).
 // Overrides are typed as plain `bigint` (not the `as const` literals) so each hook
 // can pass its own gas limit — e.g. `{ gas: 5000000n }`.
-export const getTransactionGasConfigWithOverrides = (
-  overrides?: { gas?: bigint; maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint },
-) => ({
+export const getTransactionGasConfigWithOverrides = (overrides?: { gas?: bigint; maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint }) => ({
   ...TRANSACTION_GAS_CONFIG,
   ...overrides,
 })

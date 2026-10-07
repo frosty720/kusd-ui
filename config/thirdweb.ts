@@ -12,7 +12,7 @@
  */
 
 import { createThirdwebClient, defineChain as twDefineChain } from 'thirdweb'
-import { inAppWallet, createWallet } from 'thirdweb/wallets'
+import { createWallet, inAppWallet } from 'thirdweb/wallets'
 import { APP_CHAIN_ID, kalyChainKmt, kalyChainMainnet, kalyChainTestnet } from '@/config/networks'
 
 // createThirdwebClient throws on an empty clientId. Fall back to a placeholder so
@@ -120,11 +120,7 @@ export const kusdInAppWallet = inAppWallet({
 })
 
 /** External wallets, surfaced after the in-app option. */
-export const externalWallets = [
-  createWallet('io.metamask'),
-  createWallet('com.coinbase.wallet'),
-  createWallet('io.rabby'),
-]
+export const externalWallets = [createWallet('io.metamask'), createWallet('com.coinbase.wallet'), createWallet('io.rabby')]
 
 /** In-app wallet first (the shared-login path), then external, then WalletConnect. */
 export const allWallets = [kusdInAppWallet, ...externalWallets, createWallet('walletConnect')]

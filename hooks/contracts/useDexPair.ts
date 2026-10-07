@@ -1,15 +1,15 @@
 /**
  * DEX Pair Hook
- * 
+ *
  * Hook for reading KUSD/USDC pair data from KalySwap (UniswapV2)
  */
 
-import { useReadContract, useReadContracts } from 'wagmi'
 import { type Address, parseAbi, zeroAddress } from 'viem'
+import { useReadContract, useReadContracts } from 'wagmi'
 import UniswapV2PairABI from '@/abis/UniswapV2Pair.json'
 import { getContracts, getNetworkSettings } from '@/config/contracts'
-import { deepestPool, kusdPriceFromSqrt, pegStatus, type PegPool } from '@/lib/peg'
 import { APP_CHAIN_ID } from '@/config/networks'
+import { deepestPool, kusdPriceFromSqrt, type PegPool, pegStatus } from '@/lib/peg'
 
 // DEX pair address from environment
 const PAIR_ADDRESS = process.env.NEXT_PUBLIC_DEX_PAIR_ADDRESS as Address | undefined
@@ -85,7 +85,7 @@ export function useKusdPrice(kusdAddress: Address | undefined, usdcAddress: Addr
   // Determine which reserve is USDC (6 decimals) and which is KUSD (18 decimals)
   const token0Address = token0 as Address
   const isUsdcToken0 = token0Address.toLowerCase() === usdcAddress.toLowerCase()
-  
+
   const usdcReserve = isUsdcToken0 ? reserve0 : reserve1
   const kusdReserve = isUsdcToken0 ? reserve1 : reserve0
 
@@ -100,7 +100,7 @@ export function useKusdPrice(kusdAddress: Address | undefined, usdcAddress: Addr
   const kusdNormalized = Number(kusdReserve)
 
   const price = usdcNormalized / kusdNormalized
-  const deviation = ((price - 1) * 100) // Percentage deviation from $1.00
+  const deviation = (price - 1) * 100 // Percentage deviation from $1.00
 
   let status: 'on-peg' | 'above-peg' | 'below-peg' | 'critical'
   if (Math.abs(deviation) < 0.5) {
@@ -130,15 +130,16 @@ type KusdPrice =
  * in the same shape as useKusdPrice. Pools are found through the factory, so a new pool shows up
  * without a config change.
  */
-function useKusdV3Price(
-  factory: Address | undefined,
-  feeTiers: readonly number[],
-  kusd: Address,
-  stable: { token: Address; decimals: number },
-): KusdPrice {
+function useKusdV3Price(factory: Address | undefined, feeTiers: readonly number[], kusd: Address, stable: { token: Address; decimals: number }): KusdPrice {
   const { data: pools } = useReadContracts({
     contracts: factory
-      ? feeTiers.map((fee) => ({ chainId: APP_CHAIN_ID, address: factory, abi: v3FactoryAbi, functionName: 'getPool' as const, args: [kusd, stable.token, fee] as const }))
+      ? feeTiers.map((fee) => ({
+          chainId: APP_CHAIN_ID,
+          address: factory,
+          abi: v3FactoryAbi,
+          functionName: 'getPool' as const,
+          args: [kusd, stable.token, fee] as const,
+        }))
       : [],
     query: { enabled: Boolean(factory), refetchInterval: 60000 },
   })
@@ -158,7 +159,7 @@ function useKusdV3Price(
   const read: PegPool[] = found.map((pool, i) => ({
     pool,
     liquidity: (state[i * 3]?.result as bigint | undefined) ?? 0n,
-    sqrtPriceX96: ((state[i * 3 + 1]?.result as readonly [bigint, ...unknown[]] | undefined)?.[0]) ?? 0n,
+    sqrtPriceX96: (state[i * 3 + 1]?.result as readonly [bigint, ...unknown[]] | undefined)?.[0] ?? 0n,
     token0: (state[i * 3 + 2]?.result as Address | undefined) ?? zeroAddress,
   }))
   const best = deepestPool(read)
@@ -186,4 +187,3 @@ export function useKusdPegPrice(): KusdPrice {
   )
   return isV3 ? v3 : (v2 as KusdPrice)
 }
-

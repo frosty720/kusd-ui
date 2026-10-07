@@ -4,7 +4,7 @@
  * 3888 addresses.
  */
 import { describe, expect, it } from 'vitest'
-import { allWallets, SUPPORTED_TOKENS, thirdwebChains, TW_CHAINS, twActiveChain, twKalyKmt } from '../thirdweb'
+import { allWallets, SUPPORTED_TOKENS, TW_CHAINS, thirdwebChains, twActiveChain, twKalyKmt } from '../thirdweb'
 
 describe('thirdweb config', () => {
   it('connects to the app chain (3890, native KMT) and offers only it', () => {

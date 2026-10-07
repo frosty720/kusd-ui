@@ -16,13 +16,13 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useActiveWallet, useActiveAccount, useActiveWalletChain } from 'thirdweb/react'
-import { useConnect, useDisconnect, useAccount, createConnector } from 'wagmi'
+import type { Chain as ThirdwebChain } from 'thirdweb'
+import { useActiveAccount, useActiveWallet, useActiveWalletChain } from 'thirdweb/react'
 import { EIP1193 } from 'thirdweb/wallets'
 import type { EIP1193Provider, Chain as ViemChain } from 'viem'
-import type { Chain as ThirdwebChain } from 'thirdweb'
-import { thirdwebClient, twActiveChain, TW_CHAINS } from '@/config/thirdweb'
+import { createConnector, useAccount, useConnect, useDisconnect } from 'wagmi'
 import { APP_NETWORK, kalyChainKmt, kalyChainMainnet, kalyChainTestnet } from '@/config/networks'
+import { TW_CHAINS, thirdwebClient, twActiveChain } from '@/config/thirdweb'
 
 // Every KalyChain network is known here; the in-app wallet's provider follows the
 // currently-selected thirdweb chain so reads/writes hit the right chain.
@@ -131,12 +131,7 @@ export function useThirdwebWagmiBridge() {
       }
 
       // Wagmi already has this address via a direct (non-bridge) connector.
-      if (
-        wagmiConnected &&
-        wagmiAddress?.toLowerCase() === twAddress &&
-        !chainChanged &&
-        wagmiConnector?.id !== 'thirdweb-inapp'
-      ) {
+      if (wagmiConnected && wagmiAddress?.toLowerCase() === twAddress && !chainChanged && wagmiConnector?.id !== 'thirdweb-inapp') {
         lastSyncedAddress.current = twAddress
         lastSyncedChainId.current = twChainId
         return
@@ -211,16 +206,7 @@ export function useThirdwebWagmiBridge() {
         retryAttemptRef.current = 0
       }
     }
-  }, [
-    thirdwebWallet,
-    thirdwebAccount?.address,
-    thirdwebChain?.id,
-    wagmiAddress,
-    wagmiConnected,
-    wagmiConnector?.id,
-    connect,
-    wagmiDisconnect,
-  ])
+  }, [thirdwebWallet, thirdwebAccount?.address, thirdwebChain?.id, wagmiAddress, wagmiConnected, wagmiConnector?.id, connect, wagmiDisconnect])
 
   useEffect(() => {
     return () => {

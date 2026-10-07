@@ -1,12 +1,12 @@
 /**
  * Formatting Utilities
- * 
+ *
  * Functions for formatting numbers, currencies, and blockchain values
  * for display in the UI.
  */
 
 import { formatUnits, parseUnits } from 'viem'
-import { WAD, RAY, RAD, TOKEN_DECIMALS } from './constants'
+import { RAY, TOKEN_DECIMALS } from './constants'
 
 /**
  * Format WAD values (18 decimals) to human-readable strings
@@ -56,11 +56,7 @@ export function parseRAD(value: string): bigint {
 /**
  * Format token amount based on token decimals
  */
-export function formatTokenAmount(
-  value: bigint,
-  tokenSymbol: string,
-  displayDecimals: number = 2
-): string {
+export function formatTokenAmount(value: bigint, tokenSymbol: string, displayDecimals: number = 2): string {
   const decimals = TOKEN_DECIMALS[tokenSymbol] || 18
   const formatted = formatUnits(value, decimals)
   return parseFloat(formatted).toFixed(displayDecimals)
@@ -112,18 +108,18 @@ export function formatPercentFromBps(bps: bigint, decimals: number = 2): string 
 
 /**
  * Format percentage from RAY (stability fee rate)
- * 
+ *
  * Stability fees are stored as RAY values representing the per-second rate.
  * We need to convert to APY for display.
  */
 export function formatAPYFromRate(rate: bigint, decimals: number = 2): string {
   // Convert RAY rate to decimal
   const rateDecimal = Number(rate) / Number(RAY)
-  
+
   // Calculate APY: (rate ^ seconds_per_year) - 1
   const secondsPerYear = 365.25 * 24 * 60 * 60
   const apy = (Math.pow(rateDecimal, secondsPerYear) - 1) * 100
-  
+
   return formatPercent(apy, decimals)
 }
 
@@ -141,7 +137,7 @@ export function formatCollateralRatio(ratio: bigint, decimals: number = 2): stri
  */
 export function formatCompact(value: number): string {
   const absValue = Math.abs(value)
-  
+
   if (absValue >= 1e9) {
     return `${(value / 1e9).toFixed(2)}B`
   }
@@ -151,7 +147,7 @@ export function formatCompact(value: number): string {
   if (absValue >= 1e3) {
     return `${(value / 1e3).toFixed(2)}K`
   }
-  
+
   return value.toFixed(2)
 }
 
@@ -185,7 +181,7 @@ export function formatDuration(seconds: number): string {
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  
+
   if (days > 0) {
     return `${days}d ${hours}h`
   }
@@ -243,7 +239,7 @@ export function formatNumberFromWAD(value: bigint, decimals: number = 2): string
 export function truncateDecimals(value: string, decimals: number): string {
   const parts = value.split('.')
   if (parts.length === 1) return value
-  
+
   const truncated = parts[1].slice(0, decimals)
   return `${parts[0]}.${truncated}`
 }
@@ -254,23 +250,22 @@ export function truncateDecimals(value: string, decimals: number): string {
 export function formatInputValue(value: string, maxDecimals: number = 18): string {
   // Remove non-numeric characters except decimal point
   let cleaned = value.replace(/[^\d.]/g, '')
-  
+
   // Only allow one decimal point
   const parts = cleaned.split('.')
   if (parts.length > 2) {
     cleaned = `${parts[0]}.${parts.slice(1).join('')}`
   }
-  
+
   // Limit decimal places
   if (parts.length === 2 && parts[1].length > maxDecimals) {
     cleaned = `${parts[0]}.${parts[1].slice(0, maxDecimals)}`
   }
-  
+
   // Remove leading zeros (except for "0.")
   if (cleaned.startsWith('0') && !cleaned.startsWith('0.') && cleaned.length > 1) {
     cleaned = cleaned.replace(/^0+/, '')
   }
-  
+
   return cleaned
 }
-

@@ -1,24 +1,24 @@
 /**
  * Vat Contract Hook
- * 
+ *
  * Hook for interacting with the Vat (CDP Engine) contract.
  * This is the core contract that manages all CDPs (Vaults).
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import VatABI from '@/abis/Vat.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useVat(chainId: number) {
   const contracts = getContracts(chainId)
   const vatAddress = contracts.core.vat
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get user's CDP (urn) data for a specific collateral type
   const useUrn = (ilk: `0x${string}` | undefined, user: Address | undefined) => {
     return useReadContract({
@@ -33,7 +33,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Get collateral type (ilk) configuration
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
@@ -48,7 +48,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Get user's internal KUSD balance
   const useKusd = (user: Address | undefined) => {
     return useReadContract({
@@ -63,7 +63,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Get user's collateral balance in the Vat
   const useGem = (ilk: `0x${string}` | undefined, user: Address | undefined) => {
     return useReadContract({
@@ -78,7 +78,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Check if an address can modify another address's CDP
   const useCan = (owner: Address | undefined, operator: Address | undefined) => {
     return useReadContract({
@@ -93,7 +93,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Get global debt ceiling
   const useLine = () => {
     return useReadContract({
@@ -106,7 +106,7 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   // Get total system debt
   const useDebt = () => {
     return useReadContract({
@@ -119,11 +119,11 @@ export function useVat(chainId: number) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Hope (grant permission to an address to modify your CDP)
   const useHope = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -152,16 +152,16 @@ export function useVat(chainId: number) {
       error,
     }
   }
-  
+
   // Nope (revoke permission from an address)
   const useNope = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const nope = (operator: Address) => {
       writeContract({
         address: vatAddress,
@@ -171,7 +171,7 @@ export function useVat(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       nope,
       hash,
@@ -181,24 +181,17 @@ export function useVat(chainId: number) {
       error,
     }
   }
-  
+
   // Frob (modify CDP - lock/free collateral and draw/wipe debt)
   const useFrob = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
-    const frob = (
-      ilk: `0x${string}`,
-      u: Address,
-      v: Address,
-      w: Address,
-      dink: bigint,
-      dart: bigint
-    ) => {
+
+    const frob = (ilk: `0x${string}`, u: Address, v: Address, w: Address, dink: bigint, dart: bigint) => {
       writeContract({
         address: vatAddress,
         abi: VatABI.abi,
@@ -207,7 +200,7 @@ export function useVat(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       frob,
       hash,
@@ -217,7 +210,7 @@ export function useVat(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: vatAddress,
     useUrn,
@@ -232,4 +225,3 @@ export function useVat(chainId: number) {
     useFrob,
   }
 }
-

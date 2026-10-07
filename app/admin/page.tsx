@@ -1,13 +1,13 @@
 'use client'
 
-import Navigation from '@/components/Navigation'
-import { useAccount, useBalance, useReadContract } from 'wagmi'
-import { useVat, usePot, useEnd, useVow, useTokenBalance, usePSM, useKusdPegPrice, useOracle } from '@/hooks'
-import { formatRAD, formatRAY, formatWAD } from '@/lib'
 import { useState } from 'react'
-import { getAllCollateralTypes, getContracts, getNetworkSettings, type CollateralType } from '@/config/contracts'
 import { formatUnits } from 'viem'
+import { useAccount, useBalance, useReadContract } from 'wagmi'
+import Navigation from '@/components/Navigation'
+import { getContracts, getNetworkSettings } from '@/config/contracts'
 import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { useEnd, useKusdPegPrice, useOracle, usePot, usePSM, useTokenBalance, useVat, useVow } from '@/hooks'
+import { formatRAD, formatWAD } from '@/lib'
 
 // Environment variables for PSM and Keeper
 const PSM_ADDRESS = process.env.NEXT_PUBLIC_PSM_ADDRESS as `0x${string}` | undefined
@@ -27,13 +27,15 @@ export default function AdminPage() {
   const { data: adminNftBalance, isLoading: isNftLoading } = useReadContract({
     chainId: APP_CHAIN_ID,
     address: ADMIN_NFT_ADDRESS,
-    abi: [{
-      name: 'balanceOf',
-      type: 'function',
-      stateMutability: 'view',
-      inputs: [{ name: 'owner', type: 'address' }],
-      outputs: [{ name: '', type: 'uint256' }],
-    }] as const,
+    abi: [
+      {
+        name: 'balanceOf',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ name: 'owner', type: 'address' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      },
+    ] as const,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: { enabled: !!address },
@@ -112,46 +114,34 @@ export default function AdminPage() {
   const { cage, isPending, isConfirming, isSuccess, error } = end.useCage()
 
   // Format values
-  const kusdSupply = totalDebt && typeof totalDebt === 'bigint'
-    ? Number(formatRAD(totalDebt)) : 0
-  const maxDebt = debtCeiling && typeof debtCeiling === 'bigint'
-    ? Number(formatRAD(debtCeiling)) : 0
+  const kusdSupply = totalDebt && typeof totalDebt === 'bigint' ? Number(formatRAD(totalDebt)) : 0
+  const maxDebt = debtCeiling && typeof debtCeiling === 'bigint' ? Number(formatRAD(debtCeiling)) : 0
   // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
-  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
-    : 0
+  const totalInDSR =
+    potTotalPie && typeof potTotalPie === 'bigint'
+      ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+      : 0
   // Calculate DSR APY: (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
   const SECONDS_PER_YEAR = 31536000
   const RAY = 10n ** 27n
-  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY
-    ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
-    : 0
+  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100 : 0
   const isLive = systemLive === 1n
   const hasAuth = isAuthorized === 1n
 
-  const queuedDebt = vowSin && typeof vowSin === 'bigint'
-    ? Number(formatRAD(vowSin)) : 0
-  const auctionedDebt = vowAsh && typeof vowAsh === 'bigint'
-    ? Number(formatRAD(vowAsh)) : 0
+  const queuedDebt = vowSin && typeof vowSin === 'bigint' ? Number(formatRAD(vowSin)) : 0
+  const auctionedDebt = vowAsh && typeof vowAsh === 'bigint' ? Number(formatRAD(vowAsh)) : 0
 
   // Format PSM/Keeper balances
-  const pocketUsdc = pocketUsdcBalance && typeof pocketUsdcBalance === 'bigint'
-    ? Number(formatUnits(pocketUsdcBalance, pegStable.decimals)) : 0
-  const pocketKusd = pocketKusdBalance && typeof pocketKusdBalance === 'bigint'
-    ? Number(formatUnits(pocketKusdBalance, 18)) : 0
-  const keeperKlc = keeperKlcBalance?.value
-    ? Number(formatUnits(keeperKlcBalance.value, 18)) : 0
-  const keeperUsdc = keeperUsdcBalance && typeof keeperUsdcBalance === 'bigint'
-    ? Number(formatUnits(keeperUsdcBalance, pegStable.decimals)) : 0
-  const keeperKusd = keeperKusdBalance && typeof keeperKusdBalance === 'bigint'
-    ? Number(formatUnits(keeperKusdBalance, 18)) : 0
+  const pocketUsdc = pocketUsdcBalance && typeof pocketUsdcBalance === 'bigint' ? Number(formatUnits(pocketUsdcBalance, pegStable.decimals)) : 0
+  const pocketKusd = pocketKusdBalance && typeof pocketKusdBalance === 'bigint' ? Number(formatUnits(pocketKusdBalance, 18)) : 0
+  const keeperKlc = keeperKlcBalance?.value ? Number(formatUnits(keeperKlcBalance.value, 18)) : 0
+  const keeperUsdc = keeperUsdcBalance && typeof keeperUsdcBalance === 'bigint' ? Number(formatUnits(keeperUsdcBalance, pegStable.decimals)) : 0
+  const keeperKusd = keeperKusdBalance && typeof keeperKusdBalance === 'bigint' ? Number(formatUnits(keeperKusdBalance, 18)) : 0
 
   // Format PSM fees (WAD = 18 decimals, fee is a percentage)
-  const tinFee = psmTin && typeof psmTin === 'bigint'
-    ? Number(formatUnits(psmTin, 18)) * 100 : 0
-  const toutFee = psmTout && typeof psmTout === 'bigint'
-    ? Number(formatUnits(psmTout, 18)) * 100 : 0
+  const tinFee = psmTin && typeof psmTin === 'bigint' ? Number(formatUnits(psmTin, 18)) * 100 : 0
+  const toutFee = psmTout && typeof psmTout === 'bigint' ? Number(formatUnits(psmTout, 18)) * 100 : 0
 
   // Helper to format collateral utilization
   const formatIlkUtilization = (ilkData: any) => {
@@ -224,9 +214,7 @@ export default function AdminPage() {
           <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-12 text-center">
             <div className="text-6xl mb-6">⛔</div>
             <h1 className="text-3xl font-bold text-red-400 mb-4">Access Denied</h1>
-            <p className="text-[#9ca3af] mb-6">
-              You must hold the Admin NFT to access this page.
-            </p>
+            <p className="text-[#9ca3af] mb-6">You must hold the Admin NFT to access this page.</p>
             <div className="bg-[#1a1a1a] border border-[#262626] rounded-lg p-4 inline-block">
               <p className="text-xs text-[#6b7280] mb-1">Admin NFT Contract:</p>
               <code className="text-xs text-[#f59e0b] break-all">{ADMIN_NFT_ADDRESS}</code>
@@ -249,51 +237,51 @@ export default function AdminPage() {
         </div>
 
         {/* System Status Banner */}
-        <div className={`mb-8 p-6 rounded-xl border ${
-          isLive
-            ? 'bg-green-900/20 border-green-500/30'
-            : 'bg-red-900/20 border-red-500/30'
-        }`}>
+        <div className={`mb-8 p-6 rounded-xl border ${isLive ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-4 h-4 rounded-full ${isLive ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
               <div>
-                <h2 className="text-xl font-bold text-white">
-                  System Status: {isLive ? 'LIVE' : 'SHUTDOWN'}
-                </h2>
+                <h2 className="text-xl font-bold text-white">System Status: {isLive ? 'LIVE' : 'SHUTDOWN'}</h2>
                 <p className="text-sm text-[#9ca3af]">
-                  {isLive
-                    ? 'All systems operational'
-                    : `Shutdown triggered at block ${shutdownWhen?.toString() || 'unknown'}`}
+                  {isLive ? 'All systems operational' : `Shutdown triggered at block ${shutdownWhen?.toString() || 'unknown'}`}
                 </p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-[#9ca3af]">Network</p>
-              <p className="text-white font-medium">
-                {APP_NETWORK.name}
-              </p>
+              <p className="text-white font-medium">{APP_NETWORK.name}</p>
             </div>
           </div>
         </div>
 
         {/* Peg Status - Most Important */}
-        <div className={`mb-8 p-6 rounded-xl border ${
-          pegStatus === 'on-peg' ? 'bg-green-900/20 border-green-500/30' :
-          pegStatus === 'critical' ? 'bg-red-900/20 border-red-500/30' :
-          'bg-yellow-900/20 border-yellow-500/30'
-        }`}>
+        <div
+          className={`mb-8 p-6 rounded-xl border ${
+            pegStatus === 'on-peg'
+              ? 'bg-green-900/20 border-green-500/30'
+              : pegStatus === 'critical'
+                ? 'bg-red-900/20 border-red-500/30'
+                : 'bg-yellow-900/20 border-yellow-500/30'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`text-4xl ${
-                pegStatus === 'on-peg' ? '' :
-                pegStatus === 'critical' ? '' : ''
-              }`}>
+              <div className={`text-4xl ${pegStatus === 'on-peg' ? '' : pegStatus === 'critical' ? '' : ''}`}>
                 {pegStatus === 'on-peg' ? '🎯' : pegStatus === 'critical' ? '🚨' : '⚠️'}
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">
-                  KUSD Peg Status: {pegStatus === 'on-peg' ? 'ON PEG' : pegStatus === 'above-peg' ? 'ABOVE PEG' : pegStatus === 'below-peg' ? 'BELOW PEG' : pegStatus === 'critical' ? 'CRITICAL' : 'Loading...'}
+                  KUSD Peg Status:{' '}
+                  {pegStatus === 'on-peg'
+                    ? 'ON PEG'
+                    : pegStatus === 'above-peg'
+                      ? 'ABOVE PEG'
+                      : pegStatus === 'below-peg'
+                        ? 'BELOW PEG'
+                        : pegStatus === 'critical'
+                          ? 'CRITICAL'
+                          : 'Loading...'}
                 </h2>
                 <p className="text-sm text-[#9ca3af]">
                   {kusdPrice !== null ? `Current price: $${kusdPrice.toFixed(4)}` : 'Fetching price...'}
@@ -302,10 +290,7 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="text-right">
-              <p className={`text-3xl font-bold ${
-                pegStatus === 'on-peg' ? 'text-green-400' :
-                pegStatus === 'critical' ? 'text-red-400' : 'text-yellow-400'
-              }`}>
+              <p className={`text-3xl font-bold ${pegStatus === 'on-peg' ? 'text-green-400' : pegStatus === 'critical' ? 'text-red-400' : 'text-yellow-400'}`}>
                 ${kusdPrice?.toFixed(4) || '-.----'}
               </p>
               <p className="text-xs text-[#6b7280]">KalySwap DEX Price</p>
@@ -341,9 +326,7 @@ export default function AdminPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#9ca3af]">KUSD Balance</span>
-                <span className="text-white font-medium">
-                  {pocketKusd.toLocaleString('en-US', { maximumFractionDigits: 2 })} KUSD
-                </span>
+                <span className="text-white font-medium">{pocketKusd.toLocaleString('en-US', { maximumFractionDigits: 2 })} KUSD</span>
               </div>
               <div className="pt-3 border-t border-[#262626]">
                 <p className="text-xs text-[#6b7280] mb-2">Pocket Address:</p>
@@ -375,9 +358,7 @@ export default function AdminPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#9ca3af]">KUSD Balance</span>
-                <span className="text-white font-medium">
-                  {keeperKusd.toLocaleString('en-US', { maximumFractionDigits: 2 })} KUSD
-                </span>
+                <span className="text-white font-medium">{keeperKusd.toLocaleString('en-US', { maximumFractionDigits: 2 })} KUSD</span>
               </div>
               <div className="pt-3 border-t border-[#262626]">
                 <p className="text-xs text-[#6b7280] mb-2">Keeper Address:</p>
@@ -500,15 +481,13 @@ function OracleRow({ symbol, data }: { symbol: string; data: { price: number; ti
       <td className="py-3 text-right text-white">
         ${data.price > 0 ? data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-.--'}
       </td>
-      <td className="py-3 text-right text-[#9ca3af]">
-        {data.age !== undefined ? formatAge(data.age) : '--'}
-      </td>
+      <td className="py-3 text-right text-[#9ca3af]">{data.age !== undefined ? formatAge(data.age) : '--'}</td>
       <td className="py-3 text-right">
-        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-          !data.valid ? 'bg-red-900/50 text-red-400' :
-          data.isStale ? 'bg-yellow-900/50 text-yellow-400' :
-          'bg-green-900/50 text-green-400'
-        }`}>
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+            !data.valid ? 'bg-red-900/50 text-red-400' : data.isStale ? 'bg-yellow-900/50 text-yellow-400' : 'bg-green-900/50 text-green-400'
+          }`}
+        >
           {!data.valid ? '❌ Invalid' : data.isStale ? '⚠️ Stale' : '✓ Fresh'}
         </span>
       </td>
@@ -527,11 +506,7 @@ function CollateralUtilizationRow({ symbol, data }: { symbol: string; data: { de
       </div>
       <div className="h-2 bg-[#262626] rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${
-            data.utilization > 90 ? 'bg-red-500' :
-            data.utilization > 70 ? 'bg-yellow-500' :
-            'bg-green-500'
-          }`}
+          className={`h-full rounded-full transition-all ${data.utilization > 90 ? 'bg-red-500' : data.utilization > 70 ? 'bg-yellow-500' : 'bg-green-500'}`}
           style={{ width: `${Math.min(data.utilization, 100)}%` }}
         />
       </div>
@@ -569,8 +544,7 @@ function EmergencyShutdownSection({
     <div className="bg-red-900/10 border border-red-500/30 rounded-xl p-6">
       <h3 className="text-xl font-bold text-red-400 mb-4">⚠️ Emergency Shutdown</h3>
       <p className="text-[#9ca3af] mb-4">
-        Emergency shutdown is an irreversible action that halts all system operations.
-        Only authorized addresses can trigger this function.
+        Emergency shutdown is an irreversible action that halts all system operations. Only authorized addresses can trigger this function.
       </p>
 
       {!isConnected ? (
@@ -580,50 +554,36 @@ function EmergencyShutdownSection({
           <p className="text-[#9ca3af]">
             Your address is not authorized to trigger emergency shutdown.
             <br />
-            <span className="text-xs text-[#6b7280]">
-              Note: Future versions will use NFT-based access control.
-            </span>
+            <span className="text-xs text-[#6b7280]">Note: Future versions will use NFT-based access control.</span>
           </p>
         </div>
       ) : !isLive ? (
         <p className="text-red-400">System is already shut down.</p>
       ) : showConfirm ? (
         <div className="space-y-4">
-          <p className="text-red-400 font-bold">
-            Are you absolutely sure? This action cannot be undone!
-          </p>
+          <p className="text-red-400 font-bold">Are you absolutely sure? This action cannot be undone!</p>
           <div className="flex gap-4">
             <button
+              type="button"
               onClick={onShutdown}
               disabled={isPending || isConfirming}
               className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg disabled:opacity-50"
             >
               {isPending ? 'Confirming...' : isConfirming ? 'Processing...' : 'CONFIRM SHUTDOWN'}
             </button>
-            <button
-              onClick={onCancel}
-              className="px-6 py-3 bg-[#262626] hover:bg-[#333] text-white rounded-lg"
-            >
+            <button type="button" onClick={onCancel} className="px-6 py-3 bg-[#262626] hover:bg-[#333] text-white rounded-lg">
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={onShutdown}
-          className="px-6 py-3 bg-red-600/50 hover:bg-red-600 text-white font-bold rounded-lg transition-colors"
-        >
+        <button type="button" onClick={onShutdown} className="px-6 py-3 bg-red-600/50 hover:bg-red-600 text-white font-bold rounded-lg transition-colors">
           Initiate Emergency Shutdown
         </button>
       )}
 
-      {isSuccess && (
-        <p className="mt-4 text-green-400">Emergency shutdown triggered successfully.</p>
-      )}
-      {error && (
-        <p className="mt-4 text-red-400">Error: {error.message}</p>
-      )}
+      {isSuccess && <p className="mt-4 text-green-400">Emergency shutdown triggered successfully.</p>}
+      {error && <p className="mt-4 text-red-400">Error: {error.message}</p>}
     </div>
   )
 }
-

@@ -1,22 +1,22 @@
 /**
  * Spotter Contract Hook
- * 
+ *
  * Hook for interacting with the Spotter (Oracle Price Feed) contract.
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import SpotterABI from '@/abis/Spotter.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useSpotter(chainId: number) {
   const contracts = getContracts(chainId)
   const spotterAddress = contracts.core.spotter
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get collateral type (ilk) configuration
   const useIlk = (ilk: `0x${string}` | undefined) => {
     return useReadContract({
@@ -31,7 +31,7 @@ export function useSpotter(chainId: number) {
       },
     })
   }
-  
+
   // Get vat address
   const useVat = () => {
     return useReadContract({
@@ -41,7 +41,7 @@ export function useSpotter(chainId: number) {
       functionName: 'vat',
     })
   }
-  
+
   // Get par (reference price, usually 1 RAY for $1)
   const usePar = () => {
     return useReadContract({
@@ -54,20 +54,20 @@ export function useSpotter(chainId: number) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Poke (update spot price for a collateral type)
   const usePoke = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const poke = (ilk: `0x${string}`) => {
       writeContract({
         address: spotterAddress,
@@ -77,7 +77,7 @@ export function useSpotter(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       poke,
       hash,
@@ -87,7 +87,7 @@ export function useSpotter(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: spotterAddress,
     useIlk,
@@ -96,4 +96,3 @@ export function useSpotter(chainId: number) {
     usePoke,
   }
 }
-

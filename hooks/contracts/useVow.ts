@@ -1,6 +1,6 @@
 /**
  * Vow Contract Hook
- * 
+ *
  * Hook for interacting with the Vow (System Surplus/Debt) contract.
  * This contract manages system surplus and debt auctions.
  */
@@ -133,4 +133,3 @@ export function useVow(chainId: number) {
     useWait,
   }
 }
-

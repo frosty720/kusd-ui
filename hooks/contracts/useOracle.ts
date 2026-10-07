@@ -1,11 +1,11 @@
 /**
  * Oracle Contract Hook
- * 
+ *
  * Hook for reading prices from KUSDOracle contracts.
  */
 
-import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
+import { useReadContract } from 'wagmi'
 import KUSDOracleABI from '@/abis/KUSDOracle.json'
 import { APP_CHAIN_ID } from '@/config/networks'
 
@@ -13,7 +13,7 @@ export function useOracle(oracleAddress: Address | undefined) {
   /**
    * Read Functions
    */
-  
+
   // Get current price and validity
   const usePeek = () => {
     return useReadContract({
@@ -27,7 +27,7 @@ export function useOracle(oracleAddress: Address | undefined) {
       },
     })
   }
-  
+
   // Get price data (price, timestamp, valid)
   const useGetPriceData = () => {
     return useReadContract({
@@ -41,11 +41,10 @@ export function useOracle(oracleAddress: Address | undefined) {
       },
     })
   }
-  
+
   return {
     address: oracleAddress,
     usePeek,
     useGetPriceData,
   }
 }
-

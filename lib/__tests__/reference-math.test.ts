@@ -1,22 +1,14 @@
 /**
  * Reference Math Implementation Tests
- * 
+ *
  * These tests verify that our math.ts implementations match the exact
  * behavior of the MakerDAO Solidity reference implementations.
  */
 
-import { describe, it, expect } from 'vitest'
-import {
-  rpow,
-  rmul,
-  safeAdd,
-  safeSub,
-  safeMul,
-  calculateAccumulatedRate,
-  calculateChi,
-} from '../reference-math'
-import { rayPow, rayMul } from '../math'
-import { RAY, WAD } from '../constants'
+import { describe, expect, it } from 'vitest'
+import { RAY } from '../constants'
+import { rayMul, rayPow } from '../math'
+import { calculateAccumulatedRate, rmul, rpow, safeAdd, safeMul, safeSub } from '../reference-math'
 
 describe('Reference Math vs Our Implementation', () => {
   // ============================================
@@ -52,15 +44,15 @@ describe('Reference Math vs Our Implementation', () => {
     it('should calculate compound interest correctly', () => {
       // 2% APY per-second rate: 1000000000627937192491029810
       const duty = 1000000000627937192491029810n
-      
+
       // After 1 year (31536000 seconds)
       const oneYear = 31536000n
       const result = rpow(duty, oneYear, RAY)
-      
+
       // Should be approximately 1.02 * RAY (2% growth)
       const expectedMin = RAY + (RAY * 19n) / 1000n // 1.019 (allowing some tolerance)
       const expectedMax = RAY + (RAY * 21n) / 1000n // 1.021
-      
+
       expect(result).toBeGreaterThanOrEqual(expectedMin)
       expect(result).toBeLessThanOrEqual(expectedMax)
     })
@@ -81,7 +73,7 @@ describe('Reference Math vs Our Implementation', () => {
       for (const { x, n } of testCases) {
         const refResult = rpow(x, n, RAY)
         const ourResult = rayPow(x, n)
-        
+
         // Allow for tiny rounding differences (1 wei)
         const diff = refResult > ourResult ? refResult - ourResult : ourResult - refResult
         expect(diff).toBeLessThanOrEqual(1n)
@@ -106,7 +98,7 @@ describe('Reference Math vs Our Implementation', () => {
         { a: 2n * RAY, b: 3n * RAY },
         { a: RAY / 2n, b: RAY / 2n },
         { a: 1000000000627937192491029810n, b: RAY },
-        { a: 123456789n * RAY, b: 987654321n * RAY / 1000000000n },
+        { a: 123456789n * RAY, b: (987654321n * RAY) / 1000000000n },
       ]
 
       for (const { a, b } of testCases) {
@@ -118,7 +110,7 @@ describe('Reference Math vs Our Implementation', () => {
   })
 
   // ============================================
-  // SAFE MATH REFERENCE TESTS  
+  // SAFE MATH REFERENCE TESTS
   // ============================================
   describe('safe math operations', () => {
     it('safeAdd should add correctly', () => {
@@ -155,7 +147,7 @@ describe('Reference Math vs Our Implementation', () => {
       // Daily increase for 2% APY = (1.02^(1/365) - 1) ≈ 0.0000542 = 0.00542%
       // In basis points (10000 = 100%), this is about 0.542 bps
       // Using 1000000 scale for more precision
-      const dailyIncreasePPM = (newRate - prevRate) * 1000000n / prevRate
+      const dailyIncreasePPM = ((newRate - prevRate) * 1000000n) / prevRate
       // Expected: ~54 ppm (parts per million)
       expect(dailyIncreasePPM).toBeGreaterThanOrEqual(50n)
       expect(dailyIncreasePPM).toBeLessThanOrEqual(60n)
@@ -170,11 +162,10 @@ describe('Reference Math vs Our Implementation', () => {
       const newRate = calculateAccumulatedRate(duty, base, elapsed, prevRate)
 
       // After 1 year at 2% APY, rate should be ~1.02
-      const yearlyIncrease = (newRate - prevRate) * 10000n / prevRate
+      const yearlyIncrease = ((newRate - prevRate) * 10000n) / prevRate
       // Expected: ~200 bps (2%)
       expect(yearlyIncrease).toBeGreaterThanOrEqual(195n) // 1.95%
       expect(yearlyIncrease).toBeLessThanOrEqual(205n) // 2.05%
     })
   })
 })
-

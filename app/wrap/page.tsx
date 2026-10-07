@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { formatUnits } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
 import Navigation from '@/components/Navigation'
+import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
 import { useSKLC } from '@/hooks'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, parseWAD, formatInputValue } from '@/lib'
-import { formatUnits } from 'viem'
-import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import { formatInputValue, formatWAD, parseWAD } from '@/lib'
 
 // The chain's native coin: KMT on 3890, KLC on the legacy chains. sKLC wraps it 1:1.
 const NATIVE = APP_NETWORK.nativeCurrency.symbol
@@ -35,7 +35,14 @@ export default function WrapPage() {
 
   // Wrap and unwrap hooks
   const { wrap, hash: wrapHash, error: wrapError, isPending: isWrapPending, isConfirming: isWrapConfirming, isSuccess: isWrapSuccess } = sklc.useWrap()
-  const { unwrap, hash: unwrapHash, error: unwrapError, isPending: isUnwrapPending, isConfirming: isUnwrapConfirming, isSuccess: isUnwrapSuccess } = sklc.useUnwrap()
+  const {
+    unwrap,
+    hash: unwrapHash,
+    error: unwrapError,
+    isPending: isUnwrapPending,
+    isConfirming: isUnwrapConfirming,
+    isSuccess: isUnwrapSuccess,
+  } = sklc.useUnwrap()
 
   const isPending = isWrapPending || isUnwrapPending
   const isConfirming = isWrapConfirming || isUnwrapConfirming
@@ -117,12 +124,8 @@ export default function WrapPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Wrap {NATIVE} to sKLC
-            </h1>
-            <p className="text-[#9ca3af] text-lg">
-              Wrap your {NATIVE} to get sKLC for participating in KUSD auctions
-            </p>
+            <h1 className="text-4xl font-bold text-white mb-4">Wrap {NATIVE} to sKLC</h1>
+            <p className="text-[#9ca3af] text-lg">Wrap your {NATIVE} to get sKLC for participating in KUSD auctions</p>
           </div>
 
           {/* Stats */}
@@ -135,9 +138,7 @@ export default function WrapPage() {
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">Your sKLC Balance</div>
-              <div className="text-2xl font-bold text-white">
-                {sklcBalance && typeof sklcBalance === 'bigint' ? formatWAD(sklcBalance, 4) : '0.00'} sKLC
-              </div>
+              <div className="text-2xl font-bold text-white">{sklcBalance && typeof sklcBalance === 'bigint' ? formatWAD(sklcBalance, 4) : '0.00'} sKLC</div>
             </div>
           </div>
 
@@ -146,21 +147,19 @@ export default function WrapPage() {
             {/* Toggle */}
             <div className="flex bg-[#0a0a0a]/50 rounded-lg p-1 mb-6">
               <button
+                type="button"
                 onClick={() => setIsWrapping(true)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  isWrapping
-                    ? 'bg-[#F59E0B] text-white'
-                    : 'text-[#6b7280] hover:text-white'
+                  isWrapping ? 'bg-[#F59E0B] text-white' : 'text-[#6b7280] hover:text-white'
                 }`}
               >
                 Wrap
               </button>
               <button
+                type="button"
                 onClick={() => setIsWrapping(false)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  !isWrapping
-                    ? 'bg-[#F59E0B] text-white'
-                    : 'text-[#6b7280] hover:text-white'
+                  !isWrapping ? 'bg-[#F59E0B] text-white' : 'text-[#6b7280] hover:text-white'
                 }`}
               >
                 Unwrap
@@ -170,11 +169,12 @@ export default function WrapPage() {
             <form onSubmit={handleSubmit}>
               {/* Amount Input */}
               <div className="mb-6">
-                <label className="block text-[#9ca3af] text-sm font-medium mb-2">
+                <label htmlFor="wrap-amount" className="block text-[#9ca3af] text-sm font-medium mb-2">
                   Amount
                 </label>
                 <div className="relative">
                   <input
+                    id="wrap-amount"
                     type="text"
                     value={amount}
                     onChange={(e) => handleAmountChange(e.target.value)}
@@ -182,9 +182,7 @@ export default function WrapPage() {
                     className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                     disabled={isPending || isConfirming}
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                    {isWrapping ? NATIVE : 'sKLC'}
-                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">{isWrapping ? NATIVE : 'sKLC'}</div>
                 </div>
                 <button
                   type="button"
@@ -220,9 +218,7 @@ export default function WrapPage() {
               {/* Success Message */}
               {isSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ {isWrapping ? 'Wrapped' : 'Unwrapped'} successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ {isWrapping ? 'Wrapped' : 'Unwrapped'} successfully!</p>
                 </div>
               )}
 
@@ -235,12 +231,12 @@ export default function WrapPage() {
                 {!address
                   ? 'Connect Wallet'
                   : isPending
-                  ? 'Confirm in Wallet...'
-                  : isConfirming
-                  ? 'Processing...'
-                  : isWrapping
-                  ? `Wrap ${NATIVE}`
-                  : 'Unwrap sKLC'}
+                    ? 'Confirm in Wallet...'
+                    : isConfirming
+                      ? 'Processing...'
+                      : isWrapping
+                        ? `Wrap ${NATIVE}`
+                        : 'Unwrap sKLC'}
               </button>
             </form>
           </div>
@@ -249,9 +245,8 @@ export default function WrapPage() {
           <div className="mt-8 bg-orange-900/20 border border-[#F59E0B]/30 rounded-xl p-6">
             <h3 className="text-white font-semibold mb-2">About sKLC</h3>
             <p className="text-[#9ca3af] text-sm leading-relaxed">
-              sKLC (Stable Kaly Coin) is a wrapped version of {NATIVE} used for participating in KUSD auctions.
-              You can wrap and unwrap at any time with a 1:1 exchange rate. Your {NATIVE} is safely locked in
-              the sKLC contract and can be retrieved by unwrapping.
+              sKLC (Stable Kaly Coin) is a wrapped version of {NATIVE} used for participating in KUSD auctions. You can wrap and unwrap at any time with a 1:1
+              exchange rate. Your {NATIVE} is safely locked in the sKLC contract and can be retrieved by unwrapping.
             </p>
           </div>
         </div>
@@ -259,4 +254,3 @@ export default function WrapPage() {
     </div>
   )
 }
-

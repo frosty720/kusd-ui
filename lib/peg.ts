@@ -19,17 +19,10 @@ export function pegStatus(price: number): PegStatus {
  * raw token0, so the token order decides which way to read it (on 3890 USDT 0x6318… sorts before
  * KUSD 0xFDb3…, so KUSD is token1).
  */
-export function kusdPriceFromSqrt(
-  sqrtPriceX96: bigint,
-  kusdIsToken0: boolean,
-  kusdDecimals = 18,
-  stableDecimals = 6,
-): number {
+export function kusdPriceFromSqrt(sqrtPriceX96: bigint, kusdIsToken0: boolean, kusdDecimals = 18, stableDecimals = 6): number {
   const ratio = Number((sqrtPriceX96 * sqrtPriceX96 * 10n ** 36n) / 2n ** 192n) / 1e36
   if (ratio === 0) return 0
-  return kusdIsToken0
-    ? ratio * 10 ** (kusdDecimals - stableDecimals)
-    : 1 / (ratio * 10 ** (stableDecimals - kusdDecimals))
+  return kusdIsToken0 ? ratio * 10 ** (kusdDecimals - stableDecimals) : 1 / (ratio * 10 ** (stableDecimals - kusdDecimals))
 }
 
 export interface PegPool {

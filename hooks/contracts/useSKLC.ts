@@ -1,23 +1,23 @@
 /**
  * sKLC Contract Hook
- * 
+ *
  * Hook for interacting with the sKLC (wrapped KLC) contract.
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import sKLCABI from '@/abis/sKLC.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function useSKLC(chainId: number) {
   const contracts = getContracts(chainId)
   const sklcAddress = contracts.core.sklc
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get sKLC balance
   const useBalance = (address: Address | undefined) => {
     return useReadContract({
@@ -32,7 +32,7 @@ export function useSKLC(chainId: number) {
       },
     })
   }
-  
+
   // Get total supply
   const useTotalSupply = () => {
     return useReadContract({
@@ -45,7 +45,7 @@ export function useSKLC(chainId: number) {
       },
     })
   }
-  
+
   // Get allowance
   const useAllowance = (owner: Address | undefined, spender: Address | undefined) => {
     return useReadContract({
@@ -60,20 +60,20 @@ export function useSKLC(chainId: number) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Wrap KLC to sKLC
   const useWrap = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const wrap = (amount: bigint) => {
       writeContract({
         address: sklcAddress,
@@ -83,7 +83,7 @@ export function useSKLC(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       wrap,
       hash,
@@ -93,16 +93,16 @@ export function useSKLC(chainId: number) {
       error,
     }
   }
-  
+
   // Unwrap sKLC to KLC
   const useUnwrap = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const unwrap = (amount: bigint) => {
       writeContract({
         address: sklcAddress,
@@ -112,7 +112,7 @@ export function useSKLC(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       unwrap,
       hash,
@@ -122,16 +122,16 @@ export function useSKLC(chainId: number) {
       error,
     }
   }
-  
+
   // Approve sKLC spending
   const useApprove = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const approve = (spender: Address, amount: bigint) => {
       writeContract({
         address: sklcAddress,
@@ -141,7 +141,7 @@ export function useSKLC(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       approve,
       hash,
@@ -151,16 +151,16 @@ export function useSKLC(chainId: number) {
       error,
     }
   }
-  
+
   // Transfer sKLC
   const useTransfer = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const transfer = (to: Address, amount: bigint) => {
       writeContract({
         address: sklcAddress,
@@ -170,7 +170,7 @@ export function useSKLC(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       transfer,
       hash,
@@ -180,7 +180,7 @@ export function useSKLC(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: sklcAddress,
     useBalance,
@@ -192,4 +192,3 @@ export function useSKLC(chainId: number) {
     useTransfer,
   }
 }
-

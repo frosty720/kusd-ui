@@ -29,10 +29,8 @@ const QUERY = `query Dsr($owner: ID!) {
  * where currentBalance = pie × current chi / RAY (read live on-chain).
  */
 export function useDsrEarnings(owner: string | undefined) {
-  return useSubgraphQuery<{ dsrPosition: SgDsrPosition | null }>(
-    'dsr-position',
-    QUERY,
-    owner ? { owner: owner.toLowerCase() } : undefined,
-    { enabled: !!owner, refetchInterval: 30000 },
-  )
+  return useSubgraphQuery<{ dsrPosition: SgDsrPosition | null }>('dsr-position', QUERY, owner ? { owner: owner.toLowerCase() } : undefined, {
+    enabled: !!owner,
+    refetchInterval: 30000,
+  })
 }

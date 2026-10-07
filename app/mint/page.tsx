@@ -1,17 +1,16 @@
 // @ts-nocheck
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useAccount } from 'wagmi'
 import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
+import { useAccount } from 'wagmi'
 import Navigation from '@/components/Navigation'
-import { useVat, useKusdJoin, useSpotter, useOracle, useJug } from '@/hooks'
+import { type CollateralType, getCollateral, getContracts } from '@/config/contracts'
+import { APP_CHAIN_ID } from '@/config/networks'
+import { useJug, useKusdJoin, useOracle, useSpotter, useVat } from '@/hooks'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, formatRAD, formatRAY, parseWAD, formatInputValue, formatCurrency, radToWad, rateToApr } from '@/lib'
-import { getCollateral, getContracts, type CollateralType } from '@/config/contracts'
-import { type Address } from 'viem'
-import { APP_CHAIN_ID } from '@/config/networks'
+import { formatCurrency, formatInputValue, formatRAD, formatWAD, parseWAD, radToWad, rateToApr } from '@/lib'
 
 const collateralTypes: Array<{ type: CollateralType; symbol: string; name: string; icon: string }> = [
   { type: 'WBTC-A', symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: '/icons/wbtc.svg' },
@@ -28,7 +27,7 @@ export default function MintPage() {
   const exitInitiatedRef = useRef(false)
 
   const { address } = useAccount()
-  const selectedCollateral = collateralTypes.find(c => c.type === selectedCollateralType)!
+  const selectedCollateral = collateralTypes.find((c) => c.type === selectedCollateralType)!
   const collateralConfig = getCollateral(APP_CHAIN_ID, selectedCollateralType)
   const contracts = getContracts(APP_CHAIN_ID)
 
@@ -89,12 +88,12 @@ export default function MintPage() {
   }, [isSuccess])
 
   // Calculate values
-  const ink = urnData ? (urnData as any)[0] as bigint : 0n // Locked collateral (WAD)
-  const art = urnData ? (urnData as any)[1] as bigint : 0n // Normalized debt (WAD)
-  const rate = ilkData ? (ilkData as any)[1] as bigint : 10n ** 27n // Accumulated rate (RAY)
-  const spot = ilkData ? (ilkData as any)[2] as bigint : 0n // Spot price with safety margin (RAY)
-  const dust = ilkData ? (ilkData as any)[4] as bigint : 0n // Minimum debt (RAD)
-  const mat = spotterData ? (spotterData as any)[1] as bigint : 0n // Liquidation ratio (RAY)
+  const ink = urnData ? ((urnData as any)[0] as bigint) : 0n // Locked collateral (WAD)
+  const art = urnData ? ((urnData as any)[1] as bigint) : 0n // Normalized debt (WAD)
+  const rate = ilkData ? ((ilkData as any)[1] as bigint) : 10n ** 27n // Accumulated rate (RAY)
+  const spot = ilkData ? ((ilkData as any)[2] as bigint) : 0n // Spot price with safety margin (RAY)
+  const dust = ilkData ? ((ilkData as any)[4] as bigint) : 0n // Minimum debt (RAD)
+  const mat = spotterData ? ((spotterData as any)[1] as bigint) : 0n // Liquidation ratio (RAY)
 
   // Get oracle price (WAD - 18 decimals)
   const oraclePrice = oraclePriceData && (oraclePriceData as any)[1] ? BigInt((oraclePriceData as any)[0]) : 0n
@@ -114,26 +113,23 @@ export default function MintPage() {
 
   // Calculate collateral ratio
   // Ratio = (collateral_value / debt) * 100
-  const collateralRatio = currentDebt > 0n
-    ? Number((collateralValue * 10000n) / currentDebt) / 100
-    : Infinity
+  const collateralRatio = currentDebt > 0n ? Number((collateralValue * 10000n) / currentDebt) / 100 : Infinity
 
   // Calculate new collateral ratio after minting
   const newDebt = amount ? currentDebt + parseWAD(amount) : currentDebt
-  const newCollateralRatio = newDebt > 0n
-    ? Number((collateralValue * 10000n) / newDebt) / 100
-    : Infinity
+  const newCollateralRatio = newDebt > 0n ? Number((collateralValue * 10000n) / newDebt) / 100 : Infinity
 
   // Calculate liquidation price
   // Liquidation price = (debt * mat) / collateral
-  const liquidationPrice = ink > 0n && mat > 0n && currentDebt > 0n
-    ? formatWAD((currentDebt * mat) / (ink * 10n ** 9n), 2) // Convert from RAY to WAD
-    : '0.00'
+  const liquidationPrice =
+    ink > 0n && mat > 0n && currentDebt > 0n
+      ? formatWAD((currentDebt * mat) / (ink * 10n ** 9n), 2) // Convert from RAY to WAD
+      : '0.00'
 
   // Calculate stability fee (annual rate) from Jug duty
   // duty is the per-second interest rate in RAY format
   // APR = ((duty / 1e27) ^ seconds_per_year - 1) * 100
-  const duty = jugIlkData ? (jugIlkData as any)[0] as bigint : 10n ** 27n // Per-second rate (RAY)
+  const duty = jugIlkData ? ((jugIlkData as any)[0] as bigint) : 10n ** 27n // Per-second rate (RAY)
 
   const stabilityFee = duty > 10n ** 27n ? rateToApr(duty) : 0
 
@@ -205,7 +201,7 @@ export default function MintPage() {
         address,
         address,
         0n, // dink
-        dartNormalized // dart (normalized debt)
+        dartNormalized, // dart (normalized debt)
       )
     } catch (err) {
       setError('Invalid amount')
@@ -237,24 +233,18 @@ export default function MintPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
       <Navigation />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Mint KUSD
-            </h1>
-            <p className="text-[#9ca3af] text-lg">
-              Mint KUSD stablecoins against your deposited collateral
-            </p>
+            <h1 className="text-4xl font-bold text-white mb-4">Mint KUSD</h1>
+            <p className="text-[#9ca3af] text-lg">Mint KUSD stablecoins against your deposited collateral</p>
           </div>
 
           {/* Collateral Selection */}
           <div className="mb-8">
-            <label className="block text-[#9ca3af] text-sm font-medium mb-3">
-              Select Collateral Type
-            </label>
+            <p className="block text-[#9ca3af] text-sm font-medium mb-3">Select Collateral Type</p>
             <div className="grid grid-cols-5 gap-3">
               {collateralTypes.map((collateral) => (
                 <button
@@ -262,19 +252,11 @@ export default function MintPage() {
                   type="button"
                   onClick={() => setSelectedCollateralType(collateral.type)}
                   className={`bg-[#1a1a1a] border-2 rounded-xl p-4 transition-all hover:border-[#F59E0B]/50 ${
-                    selectedCollateralType === collateral.type
-                      ? 'border-[#F59E0B]'
-                      : 'border-[#262626]'
+                    selectedCollateralType === collateral.type ? 'border-[#F59E0B]' : 'border-[#262626]'
                   }`}
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <Image
-                      src={collateral.icon}
-                      alt={collateral.symbol}
-                      width={32}
-                      height={32}
-                      className="w-8 h-8"
-                    />
+                    <Image src={collateral.icon} alt={collateral.symbol} width={32} height={32} className="w-8 h-8" />
                     <span className="text-white font-medium text-sm">{collateral.symbol}</span>
                   </div>
                 </button>
@@ -286,19 +268,23 @@ export default function MintPage() {
           {gemBalance !== undefined && gemBalance > 0n && (
             <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-xl p-6 mb-8">
               <div className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg aria-hidden="true" className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <div className="flex-1">
                   <div className="text-yellow-500 font-semibold text-lg mb-2">Unlocked Collateral Detected</div>
                   <div className="text-yellow-200/90 text-sm mb-4">
-                    You have <span className="font-semibold">{formatWAD(gemBalance, 6)} {selectedCollateral.symbol}</span> deposited but not locked in your CDP.
-                    You need to lock it before you can mint KUSD against it.
+                    You have{' '}
+                    <span className="font-semibold">
+                      {formatWAD(gemBalance, 6)} {selectedCollateral.symbol}
+                    </span>{' '}
+                    deposited but not locked in your CDP. You need to lock it before you can mint KUSD against it.
                   </div>
-                  <a
-                    href="/deposit"
-                    className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-6 rounded-lg transition-all"
-                  >
+                  <a href="/deposit" className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-6 rounded-lg transition-all">
                     Go to Deposit Page to Lock Collateral
                   </a>
                 </div>
@@ -310,35 +296,32 @@ export default function MintPage() {
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">Locked Collateral</div>
-              <div className="text-2xl font-bold text-white">
-                {formatCurrency(formatWAD(collateralValue, 2))}
-              </div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(formatWAD(collateralValue, 2))}</div>
               <div className="text-[#6b7280] text-xs mt-1">
                 {formatWAD(ink, 6)} {selectedCollateral.symbol}
               </div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">KUSD Minted</div>
-              <div className="text-2xl font-bold text-white">
-                {formatWAD(currentDebt, 2)}
-              </div>
-              <div className="text-[#6b7280] text-xs mt-1">
-                Current Debt
-              </div>
+              <div className="text-2xl font-bold text-white">{formatWAD(currentDebt, 2)}</div>
+              <div className="text-[#6b7280] text-xs mt-1">Current Debt</div>
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">Coll. Ratio</div>
-              <div className={`text-2xl font-bold ${
-                collateralRatio === Infinity ? 'text-[#22C55E]' :
-                collateralRatio >= 200 ? 'text-[#22C55E]' :
-                collateralRatio >= 150 ? 'text-yellow-500' :
-                'text-red-500'
-              }`}>
+              <div
+                className={`text-2xl font-bold ${
+                  collateralRatio === Infinity
+                    ? 'text-[#22C55E]'
+                    : collateralRatio >= 200
+                      ? 'text-[#22C55E]'
+                      : collateralRatio >= 150
+                        ? 'text-yellow-500'
+                        : 'text-red-500'
+                }`}
+              >
                 {collateralRatio === Infinity ? '∞%' : `${collateralRatio.toFixed(0)}%`}
               </div>
-              <div className="text-[#6b7280] text-xs mt-1">
-                Min: 150%
-              </div>
+              <div className="text-[#6b7280] text-xs mt-1">Min: 150%</div>
             </div>
           </div>
 
@@ -348,26 +331,23 @@ export default function MintPage() {
               {/* Success Message */}
               {isSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ KUSD minted successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ KUSD minted successfully!</p>
                 </div>
               )}
               {isExitSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ KUSD withdrawn to your wallet!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ KUSD withdrawn to your wallet!</p>
                 </div>
               )}
 
               {/* Amount Input */}
               <div className="mb-6">
-                <label className="block text-[#9ca3af] text-sm font-medium mb-2">
+                <label htmlFor="mint-amount" className="block text-[#9ca3af] text-sm font-medium mb-2">
                   Amount to Mint
                 </label>
                 <div className="relative">
                   <input
+                    id="mint-amount"
                     type="text"
                     value={amount}
                     onChange={(e) => setAmount(formatInputValue(e.target.value))}
@@ -375,9 +355,7 @@ export default function MintPage() {
                     className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                     disabled={isPending || isConfirming || isExitPending || isExitConfirming}
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                    KUSD
-                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">KUSD</div>
                 </div>
                 <div className="flex justify-between mt-2">
                   <button
@@ -388,9 +366,7 @@ export default function MintPage() {
                   >
                     Max Available
                   </button>
-                  <span className="text-sm text-[#6b7280]">
-                    USD Value: {amount ? formatCurrency(amount) : '$0.00'}
-                  </span>
+                  <span className="text-sm text-[#6b7280]">USD Value: {amount ? formatCurrency(amount) : '$0.00'}</span>
                 </div>
               </div>
 
@@ -406,9 +382,7 @@ export default function MintPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-[#6b7280] text-sm">Current Collateral Ratio</span>
                   <div className="text-right">
-                    <div className={`font-medium ${currentRatioStatus.color}`}>
-                      {collateralRatio === Infinity ? '∞%' : `${collateralRatio.toFixed(0)}%`}
-                    </div>
+                    <div className={`font-medium ${currentRatioStatus.color}`}>{collateralRatio === Infinity ? '∞%' : `${collateralRatio.toFixed(0)}%`}</div>
                     <div className="text-xs text-[#6b7280]">
                       {currentRatioStatus.emoji} {currentRatioStatus.label} (Min: {minCollateralRatio.toFixed(0)}%)
                     </div>
@@ -417,9 +391,7 @@ export default function MintPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-[#6b7280] text-sm">New Collateral Ratio</span>
                   <div className="text-right">
-                    <div className={`font-medium ${newRatioStatus.color}`}>
-                      {newCollateralRatio === Infinity ? '∞%' : `${newCollateralRatio.toFixed(0)}%`}
-                    </div>
+                    <div className={`font-medium ${newRatioStatus.color}`}>{newCollateralRatio === Infinity ? '∞%' : `${newCollateralRatio.toFixed(0)}%`}</div>
                     <div className="text-xs text-[#6b7280]">
                       {newRatioStatus.emoji} {newRatioStatus.label} (Min: {minCollateralRatio.toFixed(0)}%)
                     </div>
@@ -437,34 +409,40 @@ export default function MintPage() {
                   <span className="text-[#6b7280] text-sm">Collateral Value</span>
                   <div className="text-right">
                     <div className="text-white font-medium">{formatCurrency(formatWAD(collateralValue, 2))}</div>
-                    <div className="text-[#6b7280] text-xs">{formatWAD(ink, 6)} {selectedCollateral.symbol}</div>
+                    <div className="text-[#6b7280] text-xs">
+                      {formatWAD(ink, 6)} {selectedCollateral.symbol}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Warning */}
               {newCollateralRatio < minCollateralRatio * 2 && newCollateralRatio !== Infinity && (
-                <div className={`${
-                  newCollateralRatio < minCollateralRatio
-                    ? 'bg-red-900/20 border-red-800/50'
-                    : 'bg-yellow-900/20 border-yellow-800/50'
-                } border rounded-lg p-4 mb-6`}>
+                <div
+                  className={`${
+                    newCollateralRatio < minCollateralRatio ? 'bg-red-900/20 border-red-800/50' : 'bg-yellow-900/20 border-yellow-800/50'
+                  } border rounded-lg p-4 mb-6`}
+                >
                   <div className="flex items-start space-x-2">
-                    <svg className={`w-5 h-5 ${
-                      newCollateralRatio < minCollateralRatio ? 'text-red-500' : 'text-yellow-500'
-                    } mt-0.5`} fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg
+                      aria-hidden="true"
+                      className={`w-5 h-5 ${newCollateralRatio < minCollateralRatio ? 'text-red-500' : 'text-yellow-500'} mt-0.5`}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <div>
-                      <div className={`${
-                        newCollateralRatio < minCollateralRatio ? 'text-red-500' : 'text-yellow-500'
-                      } font-medium text-sm`}>
+                      <div className={`${newCollateralRatio < minCollateralRatio ? 'text-red-500' : 'text-yellow-500'} font-medium text-sm`}>
                         {newCollateralRatio < minCollateralRatio ? 'Liquidation Risk!' : 'Low Collateral Ratio Warning'}
                       </div>
-                      <div className={`${
-                        newCollateralRatio < minCollateralRatio ? 'text-red-200/80' : 'text-yellow-200/80'
-                      } text-sm mt-1`}>
-                        Your new collateral ratio will be {newCollateralRatio.toFixed(0)}%. Keep it above {minCollateralRatio.toFixed(0)}% to avoid liquidation. Recommended: {(minCollateralRatio * 2).toFixed(0)}%+
+                      <div className={`${newCollateralRatio < minCollateralRatio ? 'text-red-200/80' : 'text-yellow-200/80'} text-sm mt-1`}>
+                        Your new collateral ratio will be {newCollateralRatio.toFixed(0)}%. Keep it above {minCollateralRatio.toFixed(0)}% to avoid liquidation.
+                        Recommended: {(minCollateralRatio * 2).toFixed(0)}%+
                       </div>
                     </div>
                   </div>
@@ -475,8 +453,12 @@ export default function MintPage() {
               {ink === 0n && (
                 <div className="bg-orange-900/20 border border-[#F59E0B]/30 rounded-lg p-4 mb-6">
                   <div className="flex items-start space-x-2">
-                    <svg className="w-5 h-5 text-[#F59E0B] mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    <svg aria-hidden="true" className="w-5 h-5 text-[#F59E0B] mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <div>
                       <div className="text-[#F59E0B] font-medium text-sm">No Collateral Deposited</div>
@@ -501,11 +483,15 @@ export default function MintPage() {
                 disabled={isPending || isConfirming || !address || ink === 0n}
                 className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {isPending ? 'Confirm in Wallet...' :
-                 isConfirming ? 'Minting KUSD...' :
-                 !address ? 'Connect Wallet' :
-                 ink === 0n ? 'Deposit Collateral First' :
-                 'Mint KUSD'}
+                {isPending
+                  ? 'Confirm in Wallet...'
+                  : isConfirming
+                    ? 'Minting KUSD...'
+                    : !address
+                      ? 'Connect Wallet'
+                      : ink === 0n
+                        ? 'Deposit Collateral First'
+                        : 'Mint KUSD'}
               </button>
             </form>
           </div>
@@ -515,9 +501,7 @@ export default function MintPage() {
             <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-2xl p-6 mb-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-white font-semibold text-lg mb-1">
-                    💰 KUSD in Vat
-                  </h3>
+                  <h3 className="text-white font-semibold text-lg mb-1">💰 KUSD in Vat</h3>
                   <p className="text-[#9ca3af] text-sm">
                     You have {formatWAD(internalKusd / 10n ** 27n, 2)} KUSD in the Vat that needs to be withdrawn to your wallet
                   </p>
@@ -527,17 +511,13 @@ export default function MintPage() {
               {/* Success Message for Permission */}
               {isHopeSuccess && (
                 <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-400 text-sm">
-                    ✅ Permission granted successfully!
-                  </p>
+                  <p className="text-green-400 text-sm">✅ Permission granted successfully!</p>
                 </div>
               )}
 
               {exitError && (
                 <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-                  <p className="text-red-400 text-sm">
-                    ❌ Error: {exitError.message}
-                  </p>
+                  <p className="text-red-400 text-sm">❌ Error: {exitError.message}</p>
                 </div>
               )}
 
@@ -550,9 +530,7 @@ export default function MintPage() {
                     disabled={isHopePending || isHopeConfirming || !address}
                     className="w-full bg-[#262626] hover:bg-[#404040] text-white font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isHopePending ? 'Confirm in Wallet...' :
-                     isHopeConfirming ? 'Granting Permission...' :
-                     'Grant Permission to KusdJoin'}
+                    {isHopePending ? 'Confirm in Wallet...' : isHopeConfirming ? 'Granting Permission...' : 'Grant Permission to KusdJoin'}
                   </button>
                 )}
                 <button
@@ -561,11 +539,15 @@ export default function MintPage() {
                   disabled={isExitPending || isExitConfirming || !address || needsPermission}
                   className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {!address ? 'Connect Wallet' :
-                   needsPermission ? 'Grant Permission First' :
-                   isExitPending ? 'Confirm in Wallet...' :
-                   isExitConfirming ? 'Withdrawing...' :
-                   'Withdraw to Wallet'}
+                  {!address
+                    ? 'Connect Wallet'
+                    : needsPermission
+                      ? 'Grant Permission First'
+                      : isExitPending
+                        ? 'Confirm in Wallet...'
+                        : isExitConfirming
+                          ? 'Withdrawing...'
+                          : 'Withdraw to Wallet'}
                 </button>
               </div>
             </div>
@@ -598,4 +580,3 @@ export default function MintPage() {
     </div>
   )
 }
-

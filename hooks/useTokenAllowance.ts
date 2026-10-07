@@ -1,19 +1,15 @@
 /**
  * Token Allowance Hook
- * 
+ *
  * Hook for reading ERC20 token allowances.
  */
 
-import { useReadContract } from 'wagmi'
 import { type Address } from 'viem'
+import { useReadContract } from 'wagmi'
 import ERC20ABI from '@/abis/ERC20.json'
 import { APP_CHAIN_ID } from '@/config/networks'
 
-export function useTokenAllowance(
-  tokenAddress: Address | undefined,
-  ownerAddress: Address | undefined,
-  spenderAddress: Address | undefined
-) {
+export function useTokenAllowance(tokenAddress: Address | undefined, ownerAddress: Address | undefined, spenderAddress: Address | undefined) {
   return useReadContract({
     chainId: APP_CHAIN_ID,
     address: tokenAddress,
@@ -26,4 +22,3 @@ export function useTokenAllowance(
     },
   })
 }
-

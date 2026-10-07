@@ -4,7 +4,7 @@
  * `chainId === 3888 ? MAINNET : TESTNET` — on 3890 the dashboard and admin pages would have read
  * the TESTNET contracts. These tests pin the app chain and keep those literals from coming back.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getContracts, getNetworkSettings } from '../contracts'

@@ -1,23 +1,23 @@
 /**
  * Pot Contract Hook
- * 
+ *
  * Hook for interacting with the Pot (KUSD Savings Rate / DSR) contract.
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import PotABI from '@/abis/Pot.json'
 import { getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 export function usePot(chainId: number) {
   const contracts = getContracts(chainId)
   const potAddress = contracts.core.pot
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get user's DSR deposit (pie)
   const usePie = (user: Address | undefined) => {
     return useReadContract({
@@ -32,7 +32,7 @@ export function usePot(chainId: number) {
       },
     })
   }
-  
+
   // Get total DSR deposits (Pie)
   const useTotalPie = () => {
     return useReadContract({
@@ -45,7 +45,7 @@ export function usePot(chainId: number) {
       },
     })
   }
-  
+
   // Get DSR accumulator (chi)
   const useChi = () => {
     return useReadContract({
@@ -58,7 +58,7 @@ export function usePot(chainId: number) {
       },
     })
   }
-  
+
   // Get DSR rate (dsr)
   const useDsr = () => {
     return useReadContract({
@@ -71,7 +71,7 @@ export function usePot(chainId: number) {
       },
     })
   }
-  
+
   // Get last drip timestamp (rho)
   const useRho = () => {
     return useReadContract({
@@ -84,7 +84,7 @@ export function usePot(chainId: number) {
       },
     })
   }
-  
+
   // Get vat address
   const useVat = () => {
     return useReadContract({
@@ -94,11 +94,11 @@ export function usePot(chainId: number) {
       functionName: 'vat',
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Drip (update chi accumulator)
   const useDrip = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -126,7 +126,7 @@ export function usePot(chainId: number) {
       error,
     }
   }
-  
+
   // Join (deposit KUSD into DSR)
   const useJoin = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -155,7 +155,7 @@ export function usePot(chainId: number) {
       error,
     }
   }
-  
+
   // Exit (withdraw KUSD from DSR)
   const useExit = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -184,7 +184,7 @@ export function usePot(chainId: number) {
       error,
     }
   }
-  
+
   // Exit All (withdraw all KUSD from DSR)
   const useExitAll = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -213,7 +213,7 @@ export function usePot(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: potAddress,
     usePie,
@@ -228,4 +228,3 @@ export function usePot(chainId: number) {
     useExitAll,
   }
 }
-

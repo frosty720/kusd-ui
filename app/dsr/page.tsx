@@ -1,17 +1,17 @@
 // @ts-nocheck
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { type Address, formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import Navigation from '@/components/Navigation'
-import { usePot, useVat, useKusdJoin, useTokenBalance, useTokenAllowance, useApproveToken, useDSProxy } from '@/hooks'
+import { getContracts } from '@/config/contracts'
+import { APP_CHAIN_ID } from '@/config/networks'
+import { useApproveToken, useDSProxy, useKusdJoin, usePot, useTokenAllowance, useTokenBalance, useVat } from '@/hooks'
 import { useDsrEarnings } from '@/hooks/subgraph/useDsrEarnings'
 import { useRefetchOnTxSuccess } from '@/hooks/useRefetchOnTxSuccess'
 import { useTxToast } from '@/hooks/useTxToast'
-import { formatWAD, formatRAY, parseWAD, formatCurrency } from '@/lib'
-import { getContracts } from '@/config/contracts'
-import { type Address, formatUnits } from 'viem'
-import { APP_CHAIN_ID } from '@/config/networks'
+import { formatWAD, parseWAD } from '@/lib'
 
 export default function DSRPage() {
   const [depositAmount, setDepositAmount] = useState('')
@@ -30,9 +30,7 @@ export default function DSRPage() {
 
   // Check if user has a proxy
   const { data: userProxyAddress, refetch: refetchProxy } = dsProxy.useHasProxy(address)
-  const hasProxy = userProxyAddress &&
-    userProxyAddress !== '0x0000000000000000000000000000000000000000' &&
-    userProxyAddress !== '0x0'
+  const hasProxy = userProxyAddress && userProxyAddress !== '0x0000000000000000000000000000000000000000' && userProxyAddress !== '0x0'
   const proxyAddress = hasProxy ? (userProxyAddress as Address) : undefined
 
   // Debug logging
@@ -52,7 +50,7 @@ export default function DSRPage() {
   const { data: kusdAllowance, refetch: refetchKusdAllowance } = useTokenAllowance(
     contracts.core.kusd as `0x${string}`,
     address,
-    proxyAddress || contracts.core.kusdJoin as `0x${string}` // Fallback to kusdJoin if no proxy yet
+    proxyAddress || (contracts.core.kusdJoin as `0x${string}`), // Fallback to kusdJoin if no proxy yet
   )
 
   // Get internal KUSD balance in Vat (RAD format)
@@ -72,17 +70,37 @@ export default function DSRPage() {
   const { data: dsrRate } = pot.useDsr()
 
   // Approve hook for KUSD (approve proxy to spend user's KUSD)
-  const { approve, hash: approveHash, error: approveError, isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess } = useApproveToken()
+  const {
+    approve,
+    hash: approveHash,
+    error: approveError,
+    isPending: isApprovePending,
+    isConfirming: isApproveConfirming,
+    isSuccess: isApproveSuccess,
+  } = useApproveToken()
 
   // KusdJoin exit hook for withdrawing KUSD from Vat to wallet (for withdrawals)
-  const { exit: kusdJoinExit, hash: kusdJoinExitHash, error: kusdJoinExitError, isPending: isKusdJoinExitPending, isConfirming: isKusdJoinExitConfirming, isSuccess: isKusdJoinExitSuccess } = kusdJoin.useExit()
+  const {
+    exit: kusdJoinExit,
+    hash: kusdJoinExitHash,
+    error: kusdJoinExitError,
+    isPending: isKusdJoinExitPending,
+    isConfirming: isKusdJoinExitConfirming,
+    isSuccess: isKusdJoinExitSuccess,
+  } = kusdJoin.useExit()
 
   // Refresh balances/positions the instant any tx confirms (no ~10s poll wait)
   useRefetchOnTxSuccess(isApproveSuccess)
   useRefetchOnTxSuccess(isKusdJoinExitSuccess)
   useRefetchOnTxSuccess(dsProxy.isSuccess)
   useTxToast({ isSuccess: isApproveSuccess, hash: approveHash, error: approveError, successMessage: 'KUSD approved', errorMessage: 'Approval failed' })
-  useTxToast({ isSuccess: isKusdJoinExitSuccess, hash: kusdJoinExitHash, error: kusdJoinExitError, successMessage: 'KUSD withdrawn to wallet', errorMessage: 'Withdraw failed' })
+  useTxToast({
+    isSuccess: isKusdJoinExitSuccess,
+    hash: kusdJoinExitHash,
+    error: kusdJoinExitError,
+    successMessage: 'KUSD withdrawn to wallet',
+    errorMessage: 'Withdraw failed',
+  })
   useTxToast({ isSuccess: dsProxy.isSuccess, hash: dsProxy.hash, error: dsProxy.error, successMessage: 'Savings updated', errorMessage: 'Transaction failed' })
 
   // Calculate values
@@ -118,9 +136,7 @@ export default function DSRPage() {
   // DSR is in RAY format (10^27), where 1.0 = 10^27
   // APY = (rate^seconds_per_year - 1) * 100
   const SECONDS_PER_YEAR = 31536000
-  const dsrAPR = dsrRateValue > 10n ** 27n
-    ? (Math.pow(Number(dsrRateValue) / Number(10n ** 27n), SECONDS_PER_YEAR) - 1) * 100
-    : 0
+  const dsrAPR = dsrRateValue > 10n ** 27n ? (Math.pow(Number(dsrRateValue) / Number(10n ** 27n), SECONDS_PER_YEAR) - 1) * 100 : 0
 
   // Check if approval is needed for depositing (approve proxy to spend KUSD)
   const needsApproval = hasProxy && kusdAllowance !== undefined && typeof kusdAllowance === 'bigint' && depositAmount && parseWAD(depositAmount) > kusdAllowance
@@ -359,17 +375,13 @@ export default function DSRPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0f00] to-[#0a0a0a]">
       <Navigation />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              KUSD Savings Rate
-            </h1>
-            <p className="text-[#9ca3af] text-lg">
-              Earn passive income by depositing KUSD into the Pot
-            </p>
+            <h1 className="text-4xl font-bold text-white mb-4">KUSD Savings Rate</h1>
+            <p className="text-[#9ca3af] text-lg">Earn passive income by depositing KUSD into the Pot</p>
           </div>
 
           {/* Stats */}
@@ -386,9 +398,7 @@ export default function DSRPage() {
             </div>
             <div className="bg-[#1a1a1a] backdrop-blur-sm border border-[#262626] rounded-xl p-6">
               <div className="text-[#6b7280] text-sm mb-1">Earnings to date</div>
-              <div className="text-3xl font-bold text-[#22C55E]">
-                {dsrSgAvailable ? (hasDsrPosition ? '+' + formatWAD(dsrEarnings, 4) : '0.0000') : '—'}
-              </div>
+              <div className="text-3xl font-bold text-[#22C55E]">{dsrSgAvailable ? (hasDsrPosition ? '+' + formatWAD(dsrEarnings, 4) : '0.0000') : '—'}</div>
               <div className="text-[#6b7280] text-xs mt-1">{dsrSgAvailable ? 'KUSD interest accrued' : 'mainnet only'}</div>
             </div>
           </div>
@@ -415,11 +425,12 @@ export default function DSRPage() {
 
               <form onSubmit={handleDeposit}>
                 <div className="mb-6">
-                  <label className="block text-[#9ca3af] text-sm font-medium mb-2">
+                  <label htmlFor="dsr-deposit-amount" className="block text-[#9ca3af] text-sm font-medium mb-2">
                     Amount to Deposit
                   </label>
                   <div className="relative">
                     <input
+                      id="dsr-deposit-amount"
                       type="number"
                       step="0.01"
                       value={depositAmount}
@@ -427,9 +438,7 @@ export default function DSRPage() {
                       placeholder="0.0"
                       className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#22C55E]"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                      KUSD
-                    </div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">KUSD</div>
                   </div>
                   <div className="flex justify-between mt-2">
                     <button
@@ -443,9 +452,7 @@ export default function DSRPage() {
                     >
                       Max
                     </button>
-                    <span className="text-sm text-[#6b7280]">
-                      Balance: {formatWAD(typeof kusdBalance === 'bigint' ? kusdBalance : 0n, 2)} KUSD
-                    </span>
+                    <span className="text-sm text-[#6b7280]">Balance: {formatWAD(typeof kusdBalance === 'bigint' ? kusdBalance : 0n, 2)} KUSD</span>
                   </div>
                 </div>
 
@@ -464,7 +471,9 @@ export default function DSRPage() {
 
                 {hasProxy && proxyAddress && (
                   <div className="mb-4 bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                    <p className="text-green-400 text-sm">✅ Proxy deployed: {proxyAddress.slice(0, 6)}...{proxyAddress.slice(-4)}</p>
+                    <p className="text-green-400 text-sm">
+                      ✅ Proxy deployed: {proxyAddress.slice(0, 6)}...{proxyAddress.slice(-4)}
+                    </p>
                   </div>
                 )}
 
@@ -484,7 +493,7 @@ export default function DSRPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[#6b7280] text-sm">Estimated Annual Earnings</span>
                     <span className="text-white font-medium">
-                      {depositAmount ? formatWAD(parseWAD(depositAmount) * BigInt(Math.floor(dsrAPR * 100)) / 10000n, 2) : '0.00'} KUSD
+                      {depositAmount ? formatWAD((parseWAD(depositAmount) * BigInt(Math.floor(dsrAPR * 100))) / 10000n, 2) : '0.00'} KUSD
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -504,9 +513,7 @@ export default function DSRPage() {
                       disabled={dsProxy.isPending || dsProxy.isConfirming || !address}
                       className="w-full bg-[#262626] hover:bg-[#404040] text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {dsProxy.isPending ? 'Confirm in Wallet...' :
-                       dsProxy.isConfirming ? 'Deploying Proxy...' :
-                       'Deploy Proxy Contract'}
+                      {dsProxy.isPending ? 'Confirm in Wallet...' : dsProxy.isConfirming ? 'Deploying Proxy...' : 'Deploy Proxy Contract'}
                     </button>
                   )}
                   {hasProxy && needsApproval && (
@@ -516,9 +523,7 @@ export default function DSRPage() {
                       disabled={isApprovePending || isApproveConfirming || !address}
                       className="w-full bg-[#262626] hover:bg-[#404040] text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isApprovePending ? 'Confirm in Wallet...' :
-                       isApproveConfirming ? 'Approving...' :
-                       'Approve KUSD'}
+                      {isApprovePending ? 'Confirm in Wallet...' : isApproveConfirming ? 'Approving...' : 'Approve KUSD'}
                     </button>
                   )}
                   {hasProxy && (
@@ -527,18 +532,23 @@ export default function DSRPage() {
                       disabled={depositStep !== 'idle' || dsProxy.isPending || dsProxy.isConfirming || !address || needsApproval}
                       className="w-full bg-gradient-to-r from-[#22C55E] to-[#10B981] hover:from-[#10B981] hover:to-[#059669] text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
-                      {depositStep === 'depositing' && (dsProxy.isPending || dsProxy.isConfirming) ? 'Depositing to DSR...' :
-                       !address ? 'Connect Wallet' :
-                       needsApproval ? 'Approve First' :
-                       'Deposit to DSR'}
+                      {depositStep === 'depositing' && (dsProxy.isPending || dsProxy.isConfirming)
+                        ? 'Depositing to DSR...'
+                        : !address
+                          ? 'Connect Wallet'
+                          : needsApproval
+                            ? 'Approve First'
+                            : 'Deposit to DSR'}
                     </button>
                   )}
                 </div>
                 {depositStep !== 'idle' && (
                   <p className="text-xs text-[#6b7280] mt-2 text-center">
-                    {depositStep === 'buildingProxy' ? 'Deploying your proxy contract...' :
-                     depositStep === 'approving' ? 'Approving KUSD...' :
-                     'Depositing to DSR (drip + join in one tx)...'}
+                    {depositStep === 'buildingProxy'
+                      ? 'Deploying your proxy contract...'
+                      : depositStep === 'approving'
+                        ? 'Approving KUSD...'
+                        : 'Depositing to DSR (drip + join in one tx)...'}
                   </p>
                 )}
               </form>
@@ -550,11 +560,12 @@ export default function DSRPage() {
 
               <form onSubmit={handleWithdraw}>
                 <div className="mb-6">
-                  <label className="block text-[#9ca3af] text-sm font-medium mb-2">
+                  <label htmlFor="dsr-withdraw-amount" className="block text-[#9ca3af] text-sm font-medium mb-2">
                     Amount to Withdraw
                   </label>
                   <div className="relative">
                     <input
+                      id="dsr-withdraw-amount"
                       type="number"
                       step="0.01"
                       value={withdrawAmount}
@@ -562,9 +573,7 @@ export default function DSRPage() {
                       placeholder="0.0"
                       className="w-full bg-[#0a0a0a]/50 border border-[#262626] rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">
-                      KUSD
-                    </div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7280] font-medium">KUSD</div>
                   </div>
                   <div className="flex justify-between mt-2">
                     <button
@@ -574,9 +583,7 @@ export default function DSRPage() {
                     >
                       Max
                     </button>
-                    <span className="text-sm text-[#6b7280]">
-                      Deposited: {formatWAD(userKusdInDSR, 2)} KUSD
-                    </span>
+                    <span className="text-sm text-[#6b7280]">Deposited: {formatWAD(userKusdInDSR, 2)} KUSD</span>
                   </div>
                 </div>
 
@@ -587,9 +594,7 @@ export default function DSRPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[#6b7280] text-sm">You Will Receive (to Vat)</span>
-                    <span className="text-white font-medium">
-                      {withdrawAmount || '0.00'} KUSD
-                    </span>
+                    <span className="text-white font-medium">{withdrawAmount || '0.00'} KUSD</span>
                   </div>
                 </div>
 
@@ -599,12 +604,17 @@ export default function DSRPage() {
                     disabled={dsProxy.isPending || dsProxy.isConfirming || !address || !hasProxy || userPieAmount === 0n}
                     className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    {dsProxy.isPending ? 'Confirm in Wallet...' :
-                     dsProxy.isConfirming ? 'Withdrawing...' :
-                     !address ? 'Connect Wallet' :
-                     !hasProxy ? 'Deploy Proxy First' :
-                     userPieAmount === 0n ? 'No Deposit to Withdraw' :
-                     'Withdraw from DSR'}
+                    {dsProxy.isPending
+                      ? 'Confirm in Wallet...'
+                      : dsProxy.isConfirming
+                        ? 'Withdrawing...'
+                        : !address
+                          ? 'Connect Wallet'
+                          : !hasProxy
+                            ? 'Deploy Proxy First'
+                            : userPieAmount === 0n
+                              ? 'No Deposit to Withdraw'
+                              : 'Withdraw from DSR'}
                   </button>
                   <button
                     type="button"
@@ -612,9 +622,7 @@ export default function DSRPage() {
                     disabled={dsProxy.isPending || dsProxy.isConfirming || !address || !hasProxy || userPieAmount === 0n}
                     className="w-full bg-[#262626] hover:bg-[#404040] text-white font-semibold py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {dsProxy.isPending ? 'Confirm in Wallet...' :
-                     dsProxy.isConfirming ? 'Withdrawing All...' :
-                     'Withdraw All'}
+                    {dsProxy.isPending ? 'Confirm in Wallet...' : dsProxy.isConfirming ? 'Withdrawing All...' : 'Withdraw All'}
                   </button>
                 </div>
               </form>
@@ -652,4 +660,3 @@ export default function DSRPage() {
     </div>
   )
 }
-

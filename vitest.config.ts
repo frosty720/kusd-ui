@@ -1,18 +1,15 @@
-import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/__tests__/**/*.test.ts'],
+    include: ['**/__tests__/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: [
-        'lib/**/*.ts',
-        'config/**/*.ts',
-      ],
+      include: ['lib/**/*.ts', 'config/**/*.ts'],
       exclude: [
         '**/__tests__/**',
         'lib/index.ts',
@@ -38,4 +35,3 @@ export default defineConfig({
     },
   },
 })
-

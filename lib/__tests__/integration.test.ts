@@ -1,30 +1,29 @@
 /**
  * Integration Tests Against Live Contracts
- * 
+ *
  * These tests call actual smart contracts on the testnet to verify
  * that our math implementations produce results that match on-chain calculations.
- * 
+ *
  * IMPORTANT: These tests require network access to the KMT relaunch chain (3890).
  * (Re-pointed 2026-08-24: chain 3889 no longer exists — its fleet was cut over to 3890.)
  * They are marked with `.skip` by default and should be run manually when needed.
- * 
+ *
  * To run these tests:
  * npm test -- --run integration.test.ts
- * 
+ *
  * Environment Requirements:
  * - Network access to RPC: https://mainrpc.kalychain.io/rpc (now serving chainId 3890)
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
-import { createPublicClient, http, formatUnits } from 'viem'
-import { KMT_CONTRACTS } from '@/config/contracts'
-import { RAY, WAD } from '../constants'
-import { rayPow, rayMul } from '../math'
-import { rpow, rmul, calculateAccumulatedRate, calculateChi } from '../reference-math'
-import VatABI from '@/abis/Vat.json'
+import { createPublicClient, formatUnits, http } from 'viem'
+import { describe, expect, it } from 'vitest'
 import JugABI from '@/abis/Jug.json'
 import PotABI from '@/abis/Pot.json'
 import SpotterABI from '@/abis/Spotter.json'
+import VatABI from '@/abis/Vat.json'
+import { KMT_CONTRACTS } from '@/config/contracts'
+import { RAY } from '../constants'
+import { calculateChi, rpow } from '../reference-math'
 
 // KMT relaunch chain configuration (old testnet URL, chainId 3890)
 const kalyKmt = {
@@ -47,11 +46,11 @@ const contracts = KMT_CONTRACTS
 describe('Integration Tests (Live Contracts)', () => {
   describe('Contract Data Reading', () => {
     it('should read Pot.chi from contract', async () => {
-      const chi = await client.readContract({
+      const chi = (await client.readContract({
         address: contracts.core.pot,
         abi: PotABI.abi,
         functionName: 'chi',
-      }) as bigint
+      })) as bigint
 
       expect(chi).toBeGreaterThan(0n)
       expect(chi).toBeGreaterThanOrEqual(RAY) // chi >= 1.0
@@ -59,11 +58,11 @@ describe('Integration Tests (Live Contracts)', () => {
     })
 
     it('should read Pot.dsr from contract', async () => {
-      const dsr = await client.readContract({
+      const dsr = (await client.readContract({
         address: contracts.core.pot,
         abi: PotABI.abi,
         functionName: 'dsr',
-      }) as bigint
+      })) as bigint
 
       expect(dsr).toBeGreaterThan(0n)
       expect(dsr).toBeGreaterThanOrEqual(RAY) // dsr >= 1.0
@@ -71,12 +70,12 @@ describe('Integration Tests (Live Contracts)', () => {
     })
 
     it('should read Jug.ilks for WBTC-A', async () => {
-      const ilkData = await client.readContract({
+      const ilkData = (await client.readContract({
         address: contracts.core.jug,
         abi: JugABI.abi,
         functionName: 'ilks',
         args: [contracts.collateral['WBTC-A'].ilk as `0x${string}`],
-      }) as [bigint, bigint]
+      })) as [bigint, bigint]
 
       const [duty, rho] = ilkData
       expect(duty).toBeGreaterThan(0n)
@@ -86,12 +85,12 @@ describe('Integration Tests (Live Contracts)', () => {
     })
 
     it('should read Vat.ilks for WBTC-A', async () => {
-      const ilkData = await client.readContract({
+      const ilkData = (await client.readContract({
         address: contracts.core.vat,
         abi: VatABI.abi,
         functionName: 'ilks',
         args: [contracts.collateral['WBTC-A'].ilk as `0x${string}`],
-      }) as [bigint, bigint, bigint, bigint, bigint]
+      })) as [bigint, bigint, bigint, bigint, bigint]
 
       const [Art, rate, spot, line, dust] = ilkData
       expect(rate).toBeGreaterThanOrEqual(RAY) // rate >= 1.0
@@ -104,12 +103,12 @@ describe('Integration Tests (Live Contracts)', () => {
     // pip: if they ever differ, the UI shows one price and the protocol enforces another.
     it('should configure each vault type with the oracle the Spotter actually uses', async () => {
       for (const type of ['WBTC-A', 'WETH-A', 'USDT-A', 'USDC-A', 'DAI-A'] as const) {
-        const [pip] = await client.readContract({
+        const [pip] = (await client.readContract({
           address: contracts.core.spotter,
           abi: SpotterABI.abi,
           functionName: 'ilks',
           args: [contracts.collateral[type].ilk as `0x${string}`],
-        }) as [`0x${string}`, bigint]
+        })) as [`0x${string}`, bigint]
         expect(pip.toLowerCase(), type).toBe(contracts.collateral[type].oracle.toLowerCase())
       }
     })
@@ -144,11 +143,11 @@ describe('Integration Tests (Live Contracts)', () => {
       const elapsed = now - rho
       if (elapsed > 0n) {
         const predictedChi = calculateChi(dsr, elapsed, chi)
-        
+
         console.log('Current chi:', chi.toString())
         console.log('Elapsed seconds:', elapsed.toString())
         console.log('Predicted chi:', predictedChi.toString())
-        
+
         // The predicted chi should be >= current chi
         expect(predictedChi).toBeGreaterThanOrEqual(chi)
       }
@@ -160,11 +159,11 @@ describe('Integration Tests (Live Contracts)', () => {
     it('should calculate 2% APY rate correctly', () => {
       // Known 2% APY per-second rate from MakerDAO
       const duty = 1000000000627937192491029810n
-      
+
       // Calculate for 1 year
       const oneYear = 31536000n
       const result = rpow(duty, oneYear, RAY)
-      
+
       // Should be approximately 1.02 * RAY
       const ratio = (result * 10000n) / RAY
       expect(ratio).toBeGreaterThanOrEqual(10195n) // 1.0195
@@ -174,14 +173,13 @@ describe('Integration Tests (Live Contracts)', () => {
     it('should calculate 5% APY rate correctly', () => {
       // 5% APY per-second rate
       const duty = 1000000001547125957863212448n
-      
+
       const oneYear = 31536000n
       const result = rpow(duty, oneYear, RAY)
-      
+
       const ratio = (result * 10000n) / RAY
       expect(ratio).toBeGreaterThanOrEqual(10495n) // 1.0495
       expect(ratio).toBeLessThanOrEqual(10505n) // 1.0505
     })
   })
 })
-

@@ -3,35 +3,35 @@
  * 100% coverage for all formatting functions
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { RAD, RAY, WAD } from '../constants'
 import {
-  formatWAD,
-  formatRAY,
-  formatRAD,
-  parseWAD,
-  parseRAY,
-  parseRAD,
-  formatTokenAmount,
-  parseTokenAmount,
-  formatCurrency,
-  formatCurrencyFromWAD,
-  formatPercent,
-  formatPercentFromBps,
+  formatAddress,
   formatAPYFromRate,
   formatCollateralRatio,
   formatCompact,
   formatCompactFromWAD,
-  formatAddress,
-  formatTxHash,
-  formatDuration,
+  formatCurrency,
+  formatCurrencyFromWAD,
   formatDate,
   formatDateTime,
+  formatDuration,
+  formatInputValue,
   formatNumber,
   formatNumberFromWAD,
+  formatPercent,
+  formatPercentFromBps,
+  formatRAD,
+  formatRAY,
+  formatTokenAmount,
+  formatTxHash,
+  formatWAD,
+  parseRAD,
+  parseRAY,
+  parseTokenAmount,
+  parseWAD,
   truncateDecimals,
-  formatInputValue,
 } from '../formatting'
-import { WAD, RAY, RAD } from '../constants'
 
 describe('formatting.ts', () => {
   // ============================================
@@ -408,4 +408,3 @@ describe('formatting.ts', () => {
     })
   })
 })
-

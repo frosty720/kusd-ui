@@ -3,30 +3,30 @@
  * 100% coverage for all constants and the stringToBytes32 function
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  WAD,
-  RAY,
-  RAD,
-  ZERO,
-  ONE_WAD,
-  ONE_RAY,
-  ONE_RAD,
-  stringToBytes32,
+  BPS_BASE,
+  COLLATERAL_ILKS,
+  DEFAULT_DEADLINE_MINUTES,
+  DEFAULT_SLIPPAGE_BPS,
+  ILK_DAI_A,
+  ILK_TO_SYMBOL,
+  ILK_USDC_A,
+  ILK_USDT_A,
   ILK_WBTC_A,
   ILK_WETH_A,
-  ILK_USDT_A,
-  ILK_USDC_A,
-  ILK_DAI_A,
-  COLLATERAL_ILKS,
-  ILK_TO_SYMBOL,
-  TOKEN_DECIMALS,
   MIN_VAULT_AMOUNT,
-  SECONDS_PER_YEAR,
-  BPS_BASE,
+  ONE_RAD,
+  ONE_RAY,
+  ONE_WAD,
   PERCENT_BASE,
-  DEFAULT_SLIPPAGE_BPS,
-  DEFAULT_DEADLINE_MINUTES,
+  RAD,
+  RAY,
+  SECONDS_PER_YEAR,
+  stringToBytes32,
+  TOKEN_DECIMALS,
+  WAD,
+  ZERO,
 } from '../constants'
 
 describe('constants.ts', () => {
@@ -189,4 +189,3 @@ describe('constants.ts', () => {
     })
   })
 })
-

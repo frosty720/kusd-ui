@@ -1,6 +1,6 @@
 /**
  * Contract Type Definitions
- * 
+ *
  * TypeScript types for contract data structures.
  */
 
@@ -11,16 +11,16 @@ import { type Address } from 'viem'
  */
 
 export interface Urn {
-  ink: bigint  // Locked collateral
-  art: bigint  // Normalized debt
+  ink: bigint // Locked collateral
+  art: bigint // Normalized debt
 }
 
 export interface Ilk {
-  Art: bigint   // Total normalized debt
-  rate: bigint  // Accumulated rate (RAY)
-  spot: bigint  // Price with safety margin (RAY)
-  line: bigint  // Debt ceiling (RAD)
-  dust: bigint  // Minimum debt (RAD)
+  Art: bigint // Total normalized debt
+  rate: bigint // Accumulated rate (RAY)
+  spot: bigint // Price with safety margin (RAY)
+  line: bigint // Debt ceiling (RAD)
+  dust: bigint // Minimum debt (RAD)
 }
 
 /**
@@ -28,8 +28,8 @@ export interface Ilk {
  */
 
 export interface SpotIlk {
-  pip: Address  // Oracle address
-  mat: bigint   // Liquidation ratio (RAY)
+  pip: Address // Oracle address
+  mat: bigint // Liquidation ratio (RAY)
 }
 
 /**
@@ -37,11 +37,11 @@ export interface SpotIlk {
  */
 
 export interface PotData {
-  pie: bigint   // User's DSR deposit
-  Pie: bigint   // Total DSR deposits
-  dsr: bigint   // DSR rate (RAY)
-  chi: bigint   // DSR accumulator (RAY)
-  rho: bigint   // Last drip timestamp
+  pie: bigint // User's DSR deposit
+  Pie: bigint // Total DSR deposits
+  dsr: bigint // DSR rate (RAY)
+  chi: bigint // DSR accumulator (RAY)
+  rho: bigint // Last drip timestamp
 }
 
 /**
@@ -49,19 +49,19 @@ export interface PotData {
  */
 
 export interface Sale {
-  pos: bigint   // Index in active auctions array
-  tab: bigint   // KUSD to raise (RAD)
-  lot: bigint   // Collateral for sale (WAD)
-  usr: Address  // Liquidated CDP owner
-  tic: bigint   // Auction start time
-  top: bigint   // Starting price (RAY)
+  pos: bigint // Index in active auctions array
+  tab: bigint // KUSD to raise (RAD)
+  lot: bigint // Collateral for sale (WAD)
+  usr: Address // Liquidated CDP owner
+  tic: bigint // Auction start time
+  top: bigint // Starting price (RAY)
 }
 
 export interface AuctionStatus {
-  needsRedo: boolean  // Whether auction needs reset
-  price: bigint       // Current price (RAY)
-  lot: bigint         // Collateral available (WAD)
-  tab: bigint         // KUSD to raise (RAD)
+  needsRedo: boolean // Whether auction needs reset
+  price: bigint // Current price (RAY)
+  lot: bigint // Collateral available (WAD)
+  tab: bigint // KUSD to raise (RAD)
 }
 
 /**
@@ -69,11 +69,11 @@ export interface AuctionStatus {
  */
 
 export interface FlapBid {
-  bid: bigint   // sKLC bid amount (WAD)
-  lot: bigint   // KUSD lot size (RAD)
-  guy: Address  // High bidder
-  tic: bigint   // Bid expiry time
-  end: bigint   // Auction end time
+  bid: bigint // sKLC bid amount (WAD)
+  lot: bigint // KUSD lot size (RAD)
+  guy: Address // High bidder
+  tic: bigint // Bid expiry time
+  end: bigint // Auction end time
 }
 
 /**
@@ -81,11 +81,11 @@ export interface FlapBid {
  */
 
 export interface FlopBid {
-  bid: bigint   // KUSD bid amount (RAD)
-  lot: bigint   // sKLC lot size (WAD)
-  guy: Address  // High bidder
-  tic: bigint   // Bid expiry time
-  end: bigint   // Auction end time
+  bid: bigint // KUSD bid amount (RAD)
+  lot: bigint // sKLC lot size (WAD)
+  guy: Address // High bidder
+  tic: bigint // Bid expiry time
+  end: bigint // Auction end time
 }
 
 /**
@@ -174,9 +174,9 @@ export interface CollateralContracts {
  */
 
 export interface OraclePrice {
-  value: bigint     // Price in WAD
+  value: bigint // Price in WAD
   timestamp: bigint // Last update timestamp
-  isValid: boolean  // Whether price is valid
+  isValid: boolean // Whether price is valid
 }
 
 /**
@@ -184,11 +184,11 @@ export interface OraclePrice {
  */
 
 export interface SystemState {
-  globalDebt: bigint        // Total system debt (RAD)
+  globalDebt: bigint // Total system debt (RAD)
   globalDebtCeiling: bigint // Global debt ceiling (RAD)
-  surplusBuffer: bigint     // Surplus buffer (RAD)
-  debtQueueSize: bigint     // Debt queue size
-  isLive: boolean           // Whether system is live
+  surplusBuffer: bigint // Surplus buffer (RAD)
+  debtQueueSize: bigint // Debt queue size
+  isLive: boolean // Whether system is live
 }
 
 /**
@@ -202,4 +202,3 @@ export interface GovernanceAction {
   eta: bigint
   executed: boolean
 }
-

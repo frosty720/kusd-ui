@@ -1,16 +1,25 @@
 'use client'
 
-import Navigation from '@/components/Navigation'
-import Link from 'next/link'
 import Image from 'next/image'
-import { useAccount, useBalance } from 'wagmi'
-import { useUserPortfolio, type VaultPosition, type DSRPosition, type PortfolioSummary, useVat, usePot, useKusdPegPrice, useTokenBalance, useOracle } from '@/hooks'
-import { formatWAD, formatRAY, formatRAD } from '@/lib'
-import { useProtocolStats } from '@/hooks/subgraph/useProtocolStats'
-import { RAY } from '@/lib/constants'
-import { getContracts, getNetworkSettings } from '@/config/contracts'
+import Link from 'next/link'
 import { formatUnits } from 'viem'
+import { useAccount, useBalance } from 'wagmi'
+import Navigation from '@/components/Navigation'
+import { getContracts, getNetworkSettings } from '@/config/contracts'
 import { APP_CHAIN_ID, APP_NETWORK } from '@/config/networks'
+import {
+  type DSRPosition,
+  type PortfolioSummary,
+  useKusdPegPrice,
+  useOracle,
+  usePot,
+  useTokenBalance,
+  useUserPortfolio,
+  useVat,
+  type VaultPosition,
+} from '@/hooks'
+import { useProtocolStats } from '@/hooks/subgraph/useProtocolStats'
+import { formatRAD, formatRAY, formatWAD } from '@/lib'
 
 // Where users swap the PSM stable for KUSD 1:1 (KalySwap's PSM swap).
 const PSM_SWAP_URL = process.env.NEXT_PUBLIC_PSM_SWAP_URL || 'https://app.kalyswap.io/kusd?tab=swap'
@@ -24,10 +33,7 @@ export default function DashboardPage() {
   // The stable the PSM swaps against KUSD: USDT on 3890, USDC on the legacy chains
   const pegStable = contracts.collateral[getNetworkSettings(APP_CHAIN_ID).pegStable]
 
-  const { vaults, dsrPosition, summary, kusdWalletBalance, isLoading } = useUserPortfolio(
-    APP_CHAIN_ID,
-    address as `0x${string}` | undefined
-  )
+  const { vaults, dsrPosition, summary, kusdWalletBalance, isLoading } = useUserPortfolio(APP_CHAIN_ID, address as `0x${string}` | undefined)
 
   // Additional hooks for enhanced dashboard
   const vat = useVat(APP_CHAIN_ID)
@@ -56,24 +62,21 @@ export default function DashboardPage() {
   const { data: wethPriceData } = wethOracle.useGetPriceData()
 
   // Format protocol stats
-  const kusdSupply = totalDebt && typeof totalDebt === 'bigint'
-    ? Number(formatRAD(totalDebt)) : 0
+  const kusdSupply = totalDebt && typeof totalDebt === 'bigint' ? Number(formatRAD(totalDebt)) : 0
   // Calculate DSR APY correctly: APY = (rate^seconds_per_year - 1) * 100
   // Must use raw bigint division to preserve precision (formatRAY loses precision)
   const SECONDS_PER_YEAR = 31536000
   const RAY = 10n ** 27n
-  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY
-    ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100
-    : 0
+  const dsrAPY = potDsr && typeof potDsr === 'bigint' && potDsr > RAY ? (Math.pow(Number(potDsr) / Number(RAY), SECONDS_PER_YEAR) - 1) * 100 : 0
   // Total in Savings = Pie * chi / RAY (actual KUSD), not the raw normalized Pie.
-  const totalInDSR = potTotalPie && typeof potTotalPie === 'bigint'
-    ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
-    : 0
+  const totalInDSR =
+    potTotalPie && typeof potTotalPie === 'bigint'
+      ? Number(formatWAD((potTotalPie * (potChi && typeof potChi === 'bigint' ? potChi : 10n ** 27n)) / 10n ** 27n))
+      : 0
 
   // Format wallet balances
   const klcBalanceNum = klcBalance?.value ? Number(formatUnits(klcBalance.value, 18)) : 0
-  const stableBalanceNum = stableBalance && typeof stableBalance === 'bigint'
-    ? Number(formatUnits(stableBalance, pegStable.decimals)) : 0
+  const stableBalanceNum = stableBalance && typeof stableBalance === 'bigint' ? Number(formatUnits(stableBalance, pegStable.decimals)) : 0
   const kusdBalanceNum = kusdWalletBalance ? Number(formatRAD(kusdWalletBalance)) : 0
 
   // Format oracle prices
@@ -109,11 +112,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KUSD Peg Status */}
-        <KusdPegStatusBanner
-          price={kusdPrice}
-          deviation={pegDeviation}
-          status={pegStatus}
-        />
+        <KusdPegStatusBanner price={kusdPrice} deviation={pegDeviation} status={pegStatus} />
 
         {/* Wallet & Protocol Overview Row */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
@@ -135,12 +134,7 @@ export default function DashboardPage() {
               </div>
               {stableBalanceNum > 0 && (
                 <div className="pt-3 border-t border-[#262626]">
-                  <a
-                    href={PSM_SWAP_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-[#f59e0b] hover:text-[#d97706] flex items-center gap-1"
-                  >
+                  <a href={PSM_SWAP_URL} target="_blank" rel="noreferrer" className="text-sm text-[#f59e0b] hover:text-[#d97706] flex items-center gap-1">
                     💱 Swap {pegStable.symbol} for KUSD 1:1 via the PSM →
                   </a>
                 </div>
@@ -198,9 +192,7 @@ export default function DashboardPage() {
                 <p className="text-red-400 font-bold">
                   {summary.vaultsAtRisk} vault{summary.vaultsAtRisk > 1 ? 's' : ''} at risk of liquidation!
                 </p>
-                <p className="text-sm text-[#9ca3af]">
-                  Add collateral or repay debt to avoid liquidation
-                </p>
+                <p className="text-sm text-[#9ca3af]">Add collateral or repay debt to avoid liquidation</p>
               </div>
             </div>
           </div>
@@ -215,18 +207,17 @@ export default function DashboardPage() {
           {summary.activeVaults === 0 ? (
             <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-8 text-center">
               <p className="text-[#9ca3af] mb-4">You don&apos;t have any active vaults yet</p>
-              <Link
-                href="/borrow"
-                className="inline-block px-6 py-3 bg-[#f59e0b] hover:bg-[#d97706] text-black font-bold rounded-lg transition-colors"
-              >
+              <Link href="/borrow" className="inline-block px-6 py-3 bg-[#f59e0b] hover:bg-[#d97706] text-black font-bold rounded-lg transition-colors">
                 Open a Vault
               </Link>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {vaults.filter(v => v.hasPosition).map((vault) => (
-                <VaultCard key={vault.collateralType} vault={vault} />
-              ))}
+              {vaults
+                .filter((v) => v.hasPosition)
+                .map((vault) => (
+                  <VaultCard key={vault.collateralType} vault={vault} />
+                ))}
             </div>
           )}
         </div>
@@ -248,17 +239,8 @@ export default function DashboardPage() {
   )
 }
 
-
 // Portfolio Summary Section
-function PortfolioSummarySection({
-  summary,
-  kusdBalance,
-  isLoading
-}: {
-  summary: PortfolioSummary
-  kusdBalance: bigint
-  isLoading: boolean
-}) {
+function PortfolioSummarySection({ summary, kusdBalance, isLoading }: { summary: PortfolioSummary; kusdBalance: bigint; isLoading: boolean }) {
   const totalCollateral = Number(formatWAD(summary.totalCollateralValue))
   const totalDebt = Number(formatWAD(summary.totalDebt))
   const dsrBalance = Number(formatWAD(summary.totalDSRBalance))
@@ -302,9 +284,19 @@ function PortfolioSummarySection({
 }
 
 function SummaryCard({
-  title, value, subtitle, icon, color, isLoading
+  title,
+  value,
+  subtitle,
+  icon,
+  color,
+  isLoading,
 }: {
-  title: string; value: string; subtitle: string; icon: string; color?: 'red' | 'green'; isLoading: boolean
+  title: string
+  value: string
+  subtitle: string
+  icon: string
+  color?: 'red' | 'green'
+  isLoading: boolean
 }) {
   const colorClass = color === 'red' ? 'text-red-400' : color === 'green' ? 'text-green-400' : 'text-white'
   return (
@@ -313,11 +305,7 @@ function SummaryCard({
         <p className="text-sm text-[#9ca3af]">{title}</p>
         <span className="text-2xl">{icon}</span>
       </div>
-      {isLoading ? (
-        <div className="h-8 bg-[#262626] rounded animate-pulse mb-1" />
-      ) : (
-        <p className={`text-2xl font-bold ${colorClass} mb-1`}>{value}</p>
-      )}
+      {isLoading ? <div className="h-8 bg-[#262626] rounded animate-pulse mb-1" /> : <p className={`text-2xl font-bold ${colorClass} mb-1`}>{value}</p>}
       <p className="text-xs text-[#6b7280]">{subtitle}</p>
     </div>
   )
@@ -327,7 +315,7 @@ function SummaryCard({
 function KusdPegStatusBanner({
   price,
   deviation,
-  status
+  status,
 }: {
   price: number | null
   deviation: number | null
@@ -361,15 +349,14 @@ function KusdPegStatusBanner({
             <span className={`font-medium ${info.color}`}>KUSD {info.text}</span>
             {deviation !== null && (
               <span className="text-[#9ca3af] text-sm ml-2">
-                ({deviation >= 0 ? '+' : ''}{deviation.toFixed(2)}%)
+                ({deviation >= 0 ? '+' : ''}
+                {deviation.toFixed(2)}%)
               </span>
             )}
           </div>
         </div>
         <div className="text-right">
-          <span className={`text-2xl font-bold ${info.color}`}>
-            ${price?.toFixed(4) || '-.----'}
-          </span>
+          <span className={`text-2xl font-bold ${info.color}`}>${price?.toFixed(4) || '-.----'}</span>
           <p className="text-xs text-[#6b7280]">KalySwap Price</p>
         </div>
       </div>
@@ -394,9 +381,7 @@ function DSRSection({ dsrPosition }: { dsrPosition: DSRPosition }) {
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div className="flex-1">
             <p className="text-sm text-[#9ca3af] mb-1">DSR Balance</p>
-            <p className="text-3xl font-bold text-white">
-              {balance.toLocaleString('en-US', { maximumFractionDigits: 4 })} KUSD
-            </p>
+            <p className="text-3xl font-bold text-white">{balance.toLocaleString('en-US', { maximumFractionDigits: 4 })} KUSD</p>
             <p className="text-sm text-green-400 mb-4">
               +{earnings.toFixed(4)} KUSD earned • {dsrPosition.apy.toFixed(2)}% APY
             </p>
@@ -420,16 +405,10 @@ function DSRSection({ dsrPosition }: { dsrPosition: DSRPosition }) {
             )}
           </div>
           <div className="flex gap-3">
-            <Link
-              href="/dsr"
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
-            >
+            <Link href="/dsr" className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors">
               Deposit More
             </Link>
-            <Link
-              href="/dsr"
-              className="px-6 py-3 bg-[#262626] hover:bg-[#333] text-white rounded-lg transition-colors"
-            >
+            <Link href="/dsr" className="px-6 py-3 bg-[#262626] hover:bg-[#333] text-white rounded-lg transition-colors">
               Withdraw
             </Link>
           </div>
@@ -469,7 +448,9 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-[#9ca3af]">Collateral</span>
-          <span className="text-white">{collateral.toFixed(4)} {symbol}</span>
+          <span className="text-white">
+            {collateral.toFixed(4)} {symbol}
+          </span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-[#9ca3af]">Value</span>
@@ -493,7 +474,10 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
         <Link href="/borrow" className="flex-1 px-3 py-2 bg-[#262626] hover:bg-[#333] text-white text-sm rounded-lg text-center transition-colors">
           Manage
         </Link>
-        <Link href="/deposit" className="flex-1 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] text-black text-sm font-bold rounded-lg text-center transition-colors">
+        <Link
+          href="/deposit"
+          className="flex-1 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] text-black text-sm font-bold rounded-lg text-center transition-colors"
+        >
           Add Collateral
         </Link>
       </div>
@@ -505,15 +489,14 @@ function VaultCard({ vault }: { vault: VaultPosition }) {
 function HealthBadge({ healthFactor, noDebt = false }: { healthFactor: number; noDebt?: boolean }) {
   // A vault with no debt is the safest possible state (infinite health).
   if (noDebt) {
-    return (
-      <span className="px-2 py-1 text-xs font-medium rounded border bg-green-500/20 text-green-400 border-green-500/30">
-        Safe (∞)
-      </span>
-    )
+    return <span className="px-2 py-1 text-xs font-medium rounded border bg-green-500/20 text-green-400 border-green-500/30">Safe (∞)</span>
   }
-  const color = healthFactor >= 2 ? 'bg-green-500/20 text-green-400 border-green-500/30'
-    : healthFactor >= 1.5 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-    : 'bg-red-500/20 text-red-400 border-red-500/30'
+  const color =
+    healthFactor >= 2
+      ? 'bg-green-500/20 text-green-400 border-green-500/30'
+      : healthFactor >= 1.5
+        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+        : 'bg-red-500/20 text-red-400 border-red-500/30'
   const label = healthFactor >= 2 ? 'Healthy' : healthFactor >= 1.5 ? 'Caution' : 'At Risk'
 
   return (
@@ -532,18 +515,14 @@ function CollateralTypeCard({ vault }: { vault: VaultPosition }) {
     <Link
       href="/borrow"
       className={`block p-4 rounded-xl border transition-all hover:border-[#f59e0b]/50 ${
-        hasPosition
-          ? 'bg-[#1a1a1a] border-[#f59e0b]/30'
-          : 'bg-[#1a1a1a] border-[#262626]'
+        hasPosition ? 'bg-[#1a1a1a] border-[#f59e0b]/30' : 'bg-[#1a1a1a] border-[#262626]'
       }`}
     >
       <div className="flex items-center gap-3 mb-2">
         <CollateralIcon symbol={symbol} size={28} />
         <span className="font-bold text-white">{symbol}</span>
       </div>
-      <p className="text-xs text-[#9ca3af]">
-        {hasPosition ? 'Active vault' : 'Open vault'}
-      </p>
+      <p className="text-xs text-[#9ca3af]">{hasPosition ? 'Active vault' : 'Open vault'}</p>
     </Link>
   )
 }
@@ -554,43 +533,27 @@ function QuickActionsSection() {
     <div className="mb-8">
       <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <ActionCard
-          title="Open Vault"
-          description="Deposit collateral and mint KUSD"
-          href="/borrow"
-          icon="🏦"
-          color="amber"
-        />
-        <ActionCard
-          title="Earn Savings"
-          description="Deposit KUSD and earn interest"
-          href="/dsr"
-          icon="💰"
-          color="green"
-        />
-        <ActionCard
-          title="Bid on Auctions"
-          description="Get discounted collateral"
-          href="/auctions"
-          icon="🔨"
-          color="purple"
-        />
-        <ActionCard
-          title={`Wrap ${NATIVE}`}
-          description={`Convert your ${NATIVE} to sKLC`}
-          href="/wrap"
-          icon="🔄"
-          color="blue"
-        />
+        <ActionCard title="Open Vault" description="Deposit collateral and mint KUSD" href="/borrow" icon="🏦" color="amber" />
+        <ActionCard title="Earn Savings" description="Deposit KUSD and earn interest" href="/dsr" icon="💰" color="green" />
+        <ActionCard title="Bid on Auctions" description="Get discounted collateral" href="/auctions" icon="🔨" color="purple" />
+        <ActionCard title={`Wrap ${NATIVE}`} description={`Convert your ${NATIVE} to sKLC`} href="/wrap" icon="🔄" color="blue" />
       </div>
     </div>
   )
 }
 
 function ActionCard({
-  title, description, href, icon, color
+  title,
+  description,
+  href,
+  icon,
+  color,
 }: {
-  title: string; description: string; href: string; icon: string; color: 'amber' | 'green' | 'purple' | 'blue'
+  title: string
+  description: string
+  href: string
+  icon: string
+  color: 'amber' | 'green' | 'purple' | 'blue'
 }) {
   const colorClasses = {
     amber: 'hover:border-[#f59e0b]/50 hover:bg-[#f59e0b]/5',
@@ -600,10 +563,7 @@ function ActionCard({
   }
 
   return (
-    <Link
-      href={href}
-      className={`block p-6 bg-[#1a1a1a] border border-[#262626] rounded-xl transition-all ${colorClasses[color]}`}
-    >
+    <Link href={href} className={`block p-6 bg-[#1a1a1a] border border-[#262626] rounded-xl transition-all ${colorClasses[color]}`}>
       <span className="text-3xl mb-3 block">{icon}</span>
       <h3 className="font-bold text-white mb-1">{title}</h3>
       <p className="text-sm text-[#9ca3af]">{description}</p>
@@ -614,34 +574,23 @@ function ActionCard({
 // Collateral Icon Component
 function CollateralIcon({ symbol, size = 24 }: { symbol: string; size?: number }) {
   const iconMap: Record<string, string> = {
-    'WBTC': '/icons/wbtc.svg',
-    'WETH': '/icons/weth.svg',
-    'USDT': '/icons/usdt.svg',
-    'USDC': '/icons/usdc.svg',
-    'DAI': '/icons/dai.svg',
-    'KUSD': '/icons/kusd.svg',
+    WBTC: '/icons/wbtc.svg',
+    WETH: '/icons/weth.svg',
+    USDT: '/icons/usdt.svg',
+    USDC: '/icons/usdc.svg',
+    DAI: '/icons/dai.svg',
+    KUSD: '/icons/kusd.svg',
   }
 
   const iconPath = iconMap[symbol]
 
   if (iconPath) {
-    return (
-      <Image
-        src={iconPath}
-        alt={symbol}
-        width={size}
-        height={size}
-        className="rounded-full"
-      />
-    )
+    return <Image src={iconPath} alt={symbol} width={size} height={size} className="rounded-full" />
   }
 
   // Fallback for tokens without icons
   return (
-    <div
-      className="rounded-full bg-[#262626] flex items-center justify-center text-xs font-bold text-white"
-      style={{ width: size, height: size }}
-    >
+    <div className="rounded-full bg-[#262626] flex items-center justify-center text-xs font-bold text-white" style={{ width: size, height: size }}>
       {symbol.charAt(0)}
     </div>
   )

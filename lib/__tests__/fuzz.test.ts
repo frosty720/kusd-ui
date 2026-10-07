@@ -1,33 +1,19 @@
 /**
  * Fuzz Tests for Math Library
- * 
+ *
  * These tests generate thousands of random inputs to find edge cases,
  * overflow conditions, and precision errors in our math implementations.
  */
 
-import { describe, it, expect } from 'vitest'
-import {
-  wadMul,
-  wadDiv,
-  rayMul,
-  rayDiv,
-  rayPow,
-  percentOf,
-  min,
-  max,
-} from '../math'
-import {
-  calculateCollateralRatio,
-  calculateLiquidationPrice,
-  calculateMaxMint,
-  calculateHealthFactor,
-} from '../calculations'
-import { rpow, rmul } from '../reference-math'
-import { WAD, RAY } from '../constants'
+import { describe, expect, it } from 'vitest'
+import { calculateCollateralRatio, calculateLiquidationPrice } from '../calculations'
+import { RAY, WAD } from '../constants'
+import { rayMul, rayPow, wadDiv, wadMul } from '../math'
+import { rpow } from '../reference-math'
 
 // Pseudo-random number generator with seed for reproducibility
 function seededRandom(seed: number): () => number {
-  return function() {
+  return function () {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff
     return seed / 0x7fffffff
   }
@@ -53,13 +39,13 @@ describe('Fuzz Tests', () => {
         // Use reasonable ranges that won't overflow
         const a = randomBigInt(random, 0n, 10n ** 30n) // Up to 10^12 WAD
         const b = randomBigInt(random, 0n, 10n ** 30n)
-        
+
         expect(() => wadMul(a, b)).not.toThrow()
-        
+
         const result = wadMul(a, b)
         // Result should be non-negative
         expect(result).toBeGreaterThanOrEqual(0n)
-        
+
         // Approximate check: result ≈ (a * b) / WAD
         if (a > 0n && b > 0n) {
           const expected = (a * b) / WAD
@@ -72,9 +58,9 @@ describe('Fuzz Tests', () => {
       for (let i = 0; i < ITERATIONS; i++) {
         const a = randomBigInt(random, 0n, 10n ** 30n)
         const b = randomBigInt(random, 1n, 10n ** 30n) // Avoid division by zero
-        
+
         expect(() => wadDiv(a, b)).not.toThrow()
-        
+
         const result = wadDiv(a, b)
         expect(result).toBeGreaterThanOrEqual(0n)
       }
@@ -94,9 +80,9 @@ describe('Fuzz Tests', () => {
       for (let i = 0; i < ITERATIONS; i++) {
         const a = randomBigInt(random, 0n, 10n ** 36n)
         const b = randomBigInt(random, 0n, 10n ** 36n)
-        
+
         expect(() => rayMul(a, b)).not.toThrow()
-        
+
         const result = rayMul(a, b)
         expect(result).toBeGreaterThanOrEqual(0n)
       }
@@ -147,7 +133,7 @@ describe('Fuzz Tests', () => {
         const collateral = randomBigInt(random, 0n, 10n ** 24n) // Up to 1M tokens
         const price = randomBigInt(random, WAD, 100000n * WAD) // $1 to $100k
         const debt = randomBigInt(random, 0n, 10n ** 24n)
-        
+
         expect(() => calculateCollateralRatio(collateral, price, debt)).not.toThrow()
       }
     })
@@ -157,10 +143,9 @@ describe('Fuzz Tests', () => {
         const collateral = randomBigInt(random, 0n, 10n ** 24n)
         const debt = randomBigInt(random, 0n, 10n ** 24n)
         const liquidationRatio = randomBigInt(random, WAD, 2n * WAD) // 100% to 200%
-        
+
         expect(() => calculateLiquidationPrice(collateral, debt, liquidationRatio)).not.toThrow()
       }
     })
   })
 })
-

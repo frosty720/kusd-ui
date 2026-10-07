@@ -1,17 +1,16 @@
 /**
  * Auction Contracts Hook
- * 
+ *
  * Hook for interacting with auction contracts (Clipper, Flapper, Flopper).
  */
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 import { type Address } from 'viem'
+import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import ClipperABI from '@/abis/Clipper.json'
 import FlapperABI from '@/abis/Flapper.json'
 import FlopperABI from '@/abis/Flopper.json'
-import { getCollateral, type CollateralType } from '@/config/contracts'
-import { getContracts } from '@/config/contracts'
+import { type CollateralType, getCollateral, getContracts } from '@/config/contracts'
+import { getTransactionGasConfigWithOverrides } from '@/config/transaction'
 
 /**
  * Clipper (Collateral Liquidation Auctions)
@@ -19,11 +18,11 @@ import { getContracts } from '@/config/contracts'
 export function useClipper(chainId: number, collateralType: CollateralType) {
   const collateral = getCollateral(chainId, collateralType)
   const clipperAddress = collateral.clipper
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get auction data
   const useSale = (auctionId: bigint | undefined) => {
     return useReadContract({
@@ -38,7 +37,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
       },
     })
   }
-  
+
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
@@ -51,7 +50,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
       },
     })
   }
-  
+
   // Get current price for an auction
   const useStatus = (auctionId: bigint | undefined) => {
     return useReadContract({
@@ -66,27 +65,21 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Take (buy collateral from auction)
   const useTake = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
-    const take = (
-      auctionId: bigint,
-      amount: bigint,
-      maxPrice: bigint,
-      recipient: Address,
-      data: `0x${string}`
-    ) => {
+
+    const take = (auctionId: bigint, amount: bigint, maxPrice: bigint, recipient: Address, data: `0x${string}`) => {
       writeContract({
         address: clipperAddress,
         abi: ClipperABI.abi,
@@ -95,7 +88,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
         ...getTransactionGasConfigWithOverrides({ gas: 5000000n }),
       } as any)
     }
-    
+
     return {
       take,
       hash,
@@ -105,7 +98,7 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
       error,
     }
   }
-  
+
   return {
     address: clipperAddress,
     collateral,
@@ -122,11 +115,11 @@ export function useClipper(chainId: number, collateralType: CollateralType) {
 export function useFlapper(chainId: number) {
   const contracts = getContracts(chainId)
   const flapperAddress = contracts.core.flapper
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get auction data
   const useBid = (auctionId: bigint | undefined) => {
     return useReadContract({
@@ -141,7 +134,7 @@ export function useFlapper(chainId: number) {
       },
     })
   }
-  
+
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
@@ -154,20 +147,20 @@ export function useFlapper(chainId: number) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Tend (bid sKLC for KUSD)
   const useTend = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const tend = (auctionId: bigint, lot: bigint, bid: bigint) => {
       writeContract({
         address: flapperAddress,
@@ -177,7 +170,7 @@ export function useFlapper(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       tend,
       hash,
@@ -187,16 +180,16 @@ export function useFlapper(chainId: number) {
       error,
     }
   }
-  
+
   // Deal (claim won auction)
   const useDeal = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const deal = (auctionId: bigint) => {
       writeContract({
         address: flapperAddress,
@@ -206,7 +199,7 @@ export function useFlapper(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       deal,
       hash,
@@ -216,7 +209,7 @@ export function useFlapper(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: flapperAddress,
     useBid,
@@ -232,11 +225,11 @@ export function useFlapper(chainId: number) {
 export function useFlopper(chainId: number) {
   const contracts = getContracts(chainId)
   const flopperAddress = contracts.core.flopper
-  
+
   /**
    * Read Functions
    */
-  
+
   // Get auction data
   const useBid = (auctionId: bigint | undefined) => {
     return useReadContract({
@@ -251,7 +244,7 @@ export function useFlopper(chainId: number) {
       },
     })
   }
-  
+
   // Get active auction count
   const useKicks = () => {
     return useReadContract({
@@ -264,20 +257,20 @@ export function useFlopper(chainId: number) {
       },
     })
   }
-  
+
   /**
    * Write Functions
    */
-  
+
   // Dent (bid KUSD for sKLC)
   const useDent = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
-    
+
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
       chainId,
       hash,
     })
-    
+
     const dent = (auctionId: bigint, lot: bigint, bid: bigint) => {
       writeContract({
         address: flopperAddress,
@@ -287,7 +280,7 @@ export function useFlopper(chainId: number) {
         ...getTransactionGasConfigWithOverrides({ gas: 3000000n }),
       } as any)
     }
-    
+
     return {
       dent,
       hash,
@@ -297,7 +290,7 @@ export function useFlopper(chainId: number) {
       error,
     }
   }
-  
+
   // Deal (claim won auction)
   const useDeal = () => {
     const { data: hash, writeContract, isPending, error } = useWriteContract()
@@ -326,7 +319,7 @@ export function useFlopper(chainId: number) {
       error,
     }
   }
-  
+
   return {
     address: flopperAddress,
     useBid,
@@ -335,4 +328,3 @@ export function useFlopper(chainId: number) {
     useDeal,
   }
 }
-
