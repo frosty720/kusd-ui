@@ -37,13 +37,13 @@ import { ArrowDivider, Field, inputClass, outlineButtonClass, primaryButtonClass
 const STEP_LABEL: Record<KusdStep['action'], string> = {
   approve: 'Approve KUSD',
   swap: 'Swap KUSD for USDT',
-  bridge: 'Send USDT to Yellow Card',
+  bridge: 'Send USDT to our payout wallet',
 }
 
 const DELIVERY_TEXT = {
-  untracked: 'On its way to Yellow Card — usually 8–10 minutes. Use the links below to follow it.',
-  pending: 'On its way to Yellow Card — usually 8–10 minutes. You can close this page; the payout continues.',
-  delivered: 'Arrived at Yellow Card — paying your mobile money now.',
+  untracked: 'On its way to our payout wallet — usually 8–10 minutes. Use the links below to follow it.',
+  pending: 'On its way to our payout wallet — usually 8–10 minutes. You can close this page; the payout continues.',
+  delivered: 'Arrived at our payout wallet — Yellow Card is paying your mobile money now.',
   slow: 'Still on its way. You can close this page; the payout continues.',
 } as const
 
@@ -340,10 +340,17 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
         ? `Paid to your mobile money: ${Number(payout.localAmount).toLocaleString('en-US')} ${payout.currency} sent to ${momoNumber}`
         : `Paid to your mobile money (${momoNumber})`
       : state === 'failed'
-        ? 'Yellow Card could not pay this number. It returns your USDT to your wallet address on Polygon.'
+        ? 'Yellow Card could not pay this number. We return your USDT to your wallet address on Polygon.'
         : state === 'expired'
-          ? 'This cash-out expired before the USDT reached Yellow Card. If you sent it, contact support.'
-          : `Sent ${showAmount(sent.gemAmt, GEM.decimals, 6)} USDT to Yellow Card`
+          ? 'This cash-out expired before the USDT reached our payout wallet. If you sent it, contact support.'
+          : `Sent ${showAmount(sent.gemAmt, GEM.decimals, 6)} USDT to our payout wallet`
+    const polygonTx = payout?.refundTxHash ?? payout?.topUpTxHash
+    const polygonHref = polygonTx ? `https://polygonscan.com/tx/${polygonTx}` : `https://polygonscan.com/address/${sent.recipient}`
+    const polygonLabel = payout?.refundTxHash
+      ? 'View your refund on PolygonScan'
+      : payout?.topUpTxHash
+        ? 'View our payment to Yellow Card on PolygonScan'
+        : 'View our payout wallet on PolygonScan (this is not Yellow Card)'
     return (
       <div className="space-y-4">
         <div className="flex items-start gap-3 rounded-xl border border-[#262626] bg-[#0a0a0a]/50 p-4">
@@ -367,8 +374,8 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
           <a href={getExplorerTxUrl(APP_CHAIN_ID, sent.hash)} target="_blank" rel="noreferrer" className="text-[#F59E0B] hover:text-[#FBBF24]">
             View the transfer on KalyScan ↗
           </a>
-          <a href={`https://polygonscan.com/address/${sent.recipient}`} target="_blank" rel="noreferrer" className="text-[#F59E0B] hover:text-[#FBBF24]">
-            View the payment to Yellow Card on PolygonScan ↗
+          <a href={polygonHref} target="_blank" rel="noreferrer" className="text-[#F59E0B] hover:text-[#FBBF24]">
+            {polygonLabel} ↗
           </a>
         </div>
         <button type="button" className={outlineButtonClass} onClick={startOver}>
@@ -381,20 +388,22 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   return (
     <div>
       <p className="mb-5 text-sm text-[#9ca3af]">
-        Cash out KUSD to mobile money. Your KUSD is swapped 1:1 for USDT and sent over the KalySwap bridge to Yellow Card, which pays your number in local
-        currency — usually within 15 minutes.
+        Cash out KUSD to mobile money. Your KUSD is swapped 1:1 for USDT and sent over the KalySwap bridge to our payout wallet, then Yellow Card pays your
+        number in local currency — usually within 15 minutes.
       </p>
 
       {stranded && (
         <div className="mb-5 rounded-xl border border-[#F59E0B]/50 bg-[#F59E0B]/10 p-4 text-sm">
           <p className="font-semibold text-white">Your USDT is in your wallet on KalyChain</p>
-          <p className="mt-1 text-[#9ca3af]">The swap went through, but the transfer to Yellow Card did not. Send it now to the same mobile money number:</p>
+          <p className="mt-1 text-[#9ca3af]">
+            The swap went through, but the transfer to our payout wallet did not. Send it now to the same mobile money number:
+          </p>
           {!strandedHeld && (
             <p className="mt-1 text-xs text-red-400">Your wallet no longer holds {showAmount(stranded.gemAmt, GEM.decimals, 6)} USDT on KalyChain.</p>
           )}
           <button type="button" className={`${primaryButtonClass} mt-3`} disabled={!canResume} onClick={resume}>
             {busy && <Spinner />}
-            {`Send ${showAmount(stranded.gemAmt, GEM.decimals, 6)} USDT to Yellow Card`}
+            {`Send ${showAmount(stranded.gemAmt, GEM.decimals, 6)} USDT to our payout wallet`}
           </button>
         </div>
       )}
@@ -440,7 +449,7 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
       <ArrowDivider />
 
       <div className="rounded-xl border border-[#262626] bg-[#0a0a0a]/50 p-4">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">Sent to Yellow Card</div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">Sent to our payout wallet</div>
         <div className="flex items-center gap-3">
           <span className="min-w-0 flex-1 truncate text-2xl font-semibold tabular-nums text-white">
             {plan ? showAmount(plan.gemAmt, GEM.decimals, 6) : '0.0'}
