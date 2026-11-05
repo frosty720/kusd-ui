@@ -414,6 +414,10 @@ export interface RampWithdrawal {
   localAmount: string | null
   currency: string
   expiresAt: string | null
+  /** The treasury's transfer to our Yellow Card balance, once sent. */
+  topUpTxHash?: string | null
+  /** The treasury's refund to the seller, once sent. */
+  refundTxHash?: string | null
 }
 
 export interface RampWithdrawChannelsResponse {

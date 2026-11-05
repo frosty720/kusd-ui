@@ -134,7 +134,8 @@ async function fill(amount: string) {
   fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Awa Koné' } })
   fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '0701234567' } })
 }
-const resumeButton = (amount: number) => screen.findByRole('button', { name: new RegExp(`Send ${amount} USDT to Yellow Card`) }) as Promise<HTMLButtonElement>
+const resumeButton = (amount: number) =>
+  screen.findByRole('button', { name: new RegExp(`Send ${amount} USDT to our payout wallet`) }) as Promise<HTMLButtonElement>
 
 describe('CashoutPanel', () => {
   it('offers only payout corridors that have an operator', async () => {
@@ -230,7 +231,7 @@ describe('CashoutPanel', () => {
       sender: { name: 'Awa Koné', country: 'CI', phone: '+2250701234567' },
     })
     expect(cashout.mock.calls[0][0]).toEqual({ plan: { gemAmt: 50n * USDT, cost: 50n * WAD }, recipient: TREASURY, kusdAllowance: 0n })
-    expect(await screen.findByText(/On its way to Yellow Card — usually 8–10 minutes\. You can close this page/)).toBeTruthy()
+    expect(await screen.findByText(/On its way to our payout wallet — usually 8–10 minutes\. You can close this page/)).toBeTruthy()
   })
 
   it.each([
@@ -425,7 +426,33 @@ describe('CashoutPanel', () => {
     renderPanel()
     await fill('50')
     fireEvent.click(button())
-    expect(await screen.findByText('Yellow Card could not pay this number. It returns your USDT to your wallet address on Polygon.')).toBeTruthy()
+    expect(await screen.findByText('Yellow Card could not pay this number. We return your USDT to your wallet address on Polygon.')).toBeTruthy()
+  })
+
+  it('says the USDT went to our payout wallet and links that wallet, labelled as ours, until a transfer from it exists', async () => {
+    cashout.mockResolvedValue(sentTo(TREASURY))
+    renderPanel()
+    await fill('50')
+    fireEvent.click(button())
+    expect(await screen.findByText('Sent 50 USDT to our payout wallet')).toBeTruthy()
+    const link = await screen.findByRole('link', { name: /our payout wallet on PolygonScan/ })
+    expect(link.getAttribute('href')).toBe(`https://polygonscan.com/address/${TREASURY}`)
+    expect(screen.queryByText(/to Yellow Card/)).toBeNull()
+  })
+
+  it.each([
+    ['the top-up to Yellow Card', { state: 'forwarded', topUpTxHash: `0x${'aa'.repeat(32)}`, refundTxHash: null }, /our payment to Yellow Card/, 'aa'],
+    ['the refund to the seller', { state: 'failed', topUpTxHash: null, refundTxHash: `0x${'bb'.repeat(32)}` }, /your refund/, 'bb'],
+    ['the refund when both exist', { state: 'failed', topUpTxHash: `0x${'aa'.repeat(32)}`, refundTxHash: `0x${'bb'.repeat(32)}` }, /your refund/, 'bb'],
+  ])('links %s by its transaction once the keeper reports it, and not the wallet page', async (_label, status, name, byte) => {
+    cashout.mockResolvedValue(sentTo(TREASURY))
+    onStatus = () => json({ withdrawalId: 'wd-00000000', ...status })
+    renderPanel()
+    await fill('50')
+    fireEvent.click(button())
+    const link = await screen.findByRole('link', { name })
+    expect(link.getAttribute('href')).toBe(`https://polygonscan.com/tx/0x${byte.repeat(32)}`)
+    expect(screen.queryByRole('link', { name: /our payout wallet on PolygonScan/ })).toBeNull()
   })
 
   it('starts "New cash-out" from a blank form', async () => {
