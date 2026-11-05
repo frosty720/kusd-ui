@@ -6,6 +6,9 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Outside a real request: nginx passed no visitor address (lib/__tests__/ramp-server.test.ts covers one).
+vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
+
 const KEY = 'test-keeper-key-0123456789'
 const KEEPER = 'https://keeper.test'
 const WALLET = '0xfF409DBD66bD013385c41cb55D8cD90902BB4c80'

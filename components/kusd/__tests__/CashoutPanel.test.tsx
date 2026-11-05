@@ -13,6 +13,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { kusdTrade } from '@/config/kusdTrade'
 import { CashoutStrandedError } from '@/lib/cashout'
+import { cashoutTypedData } from '@/lib/ramp'
 
 const WALLET = '0x1111111111111111111111111111111111111111'
 const TREASURY = '0x52908400098527886E0F7030069857D2E4169EE7'
@@ -29,7 +30,9 @@ const cashout = vi.fn()
 const resumeBridge = vi.fn()
 const showToast = vi.fn()
 
-vi.mock('wagmi', () => ({ useAccount: () => ({ address: WALLET }) }))
+const SIGNATURE = `0x${'ab'.repeat(65)}`
+const signTypedDataAsync = vi.fn()
+vi.mock('wagmi', () => ({ useAccount: () => ({ address: WALLET }), useSignTypedData: () => ({ signTypedDataAsync }) }))
 vi.mock('@/components/WalletButton', () => ({ WalletButton: () => null }))
 vi.mock('@/providers/ToastProvider', () => ({ useToast: () => ({ showToast }) }))
 vi.mock('@/hooks/usePsmTrade', () => ({
@@ -88,6 +91,8 @@ beforeEach(() => {
   cashout.mockReset()
   resumeBridge.mockReset()
   showToast.mockReset()
+  signTypedDataAsync.mockReset()
+  signTypedDataAsync.mockResolvedValue(SIGNATURE)
   creates.length = 0
   onCreate = (body, n) => json(payout(body, n), 201)
   onStatus = () => json({ withdrawalId: 'wd-00000000', state: 'awaiting_funds' })
@@ -234,6 +239,42 @@ describe('CashoutPanel', () => {
     expect(await screen.findByText(/On its way to our payout wallet — usually 8–10 minutes\. You can close this page/)).toBeTruthy()
   })
 
+  it('has the wallet sign where its money goes, and sends that signature with the payout request', async () => {
+    cashout.mockResolvedValue(sentTo(TREASURY))
+    renderPanel()
+    await fill('50')
+    fireEvent.click(button())
+    await waitFor(() => expect(cashout).toHaveBeenCalledTimes(1))
+    expect(signTypedDataAsync).toHaveBeenCalledTimes(1)
+    const { idempotencyKey, userWallet, usdAmount, channelId, country, currency, networkId, momoNumber, accountName } = creates[0]
+    expect(signTypedDataAsync.mock.calls[0][0]).toEqual(
+      cashoutTypedData({ idempotencyKey, userWallet, usdAmount, channelId, country, currency, networkId, momoNumber, accountName } as Parameters<
+        typeof cashoutTypedData
+      >[0]),
+    )
+    expect(signTypedDataAsync.mock.calls[0][0].message).toMatchObject({ userWallet: WALLET, usdAmount: '50', momoNumber: '+2250701234567' })
+    expect(creates[0].signature).toBe(SIGNATURE)
+  })
+
+  it('asks the keeper for nothing and sends nothing when the wallet refuses to sign', async () => {
+    signTypedDataAsync.mockRejectedValue(rejected())
+    renderPanel()
+    await fill('50')
+    fireEvent.click(button())
+    expect(await screen.findByText('Transaction rejected in your wallet.')).toBeTruthy()
+    expect(creates).toHaveLength(0)
+    expect(cashout).not.toHaveBeenCalled()
+  })
+
+  it('says so, and sends nothing, when the keeper refuses the signature', async () => {
+    onCreate = () => json({ error: 'bad_signature' }, 403)
+    renderPanel()
+    await fill('50')
+    fireEvent.click(button())
+    expect(await screen.findByText('Your wallet’s signature did not match this cash-out. Please try again.')).toBeTruthy()
+    expect(cashout).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['a different amount', { usdAmount: '49' }],
     ['no deposit address', { depositAddress: null }],
@@ -265,6 +306,9 @@ describe('CashoutPanel', () => {
     expect(String(creates[0].idempotencyKey)).toMatch(/^ui-11111111-/)
     expect(creates[1].idempotencyKey).toBe(creates[0].idempotencyKey)
     expect(creates[2].idempotencyKey).not.toBe(creates[1].idempotencyKey)
+    // The retry with the same key reuses its signature (one wallet prompt); the fresh key is signed anew.
+    expect(signTypedDataAsync).toHaveBeenCalledTimes(2)
+    expect(creates[1].signature).toBe(creates[0].signature)
   })
 
   it('says "paused" in cash-out words', async () => {

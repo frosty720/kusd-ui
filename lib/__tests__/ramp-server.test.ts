@@ -5,6 +5,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// The incoming request's headers as nginx passed them (X-Real-IP is the visitor's address).
+let incoming = new Headers()
+vi.mock('next/headers', () => ({ headers: async () => incoming }))
+
 const KEY = 'test-keeper-key'
 const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ ok: true }), { status: 200 }))
 
@@ -19,6 +23,7 @@ async function load(env: Record<string, string | undefined>) {
 
 beforeEach(() => {
   fetchMock.mockClear()
+  incoming = new Headers()
   vi.stubGlobal('fetch', fetchMock)
 })
 afterEach(() => {
@@ -34,6 +39,21 @@ describe('keeperFetch', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('https://keeper.test/api/channels')
     expect((init.headers as Record<string, string>).authorization).toBe(`Bearer ${KEY}`)
+  })
+
+  it('names the visitor nginx saw, so the keeper limits each visitor separately', async () => {
+    incoming = new Headers({ 'x-real-ip': '203.0.113.7' })
+    const { keeperFetch } = await load({ RAMP_KEEPER_API_KEY: KEY, RAMP_KEEPER_URL: 'https://keeper.test' })
+    await keeperFetch('/api/channels')
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect((init.headers as Record<string, string>)['x-ramp-client-ip']).toBe('203.0.113.7')
+  })
+
+  it('names no visitor when nginx passed none', async () => {
+    const { keeperFetch } = await load({ RAMP_KEEPER_API_KEY: KEY, RAMP_KEEPER_URL: 'https://keeper.test' })
+    await keeperFetch('/api/channels')
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.headers as Record<string, string>).not.toHaveProperty('x-ramp-client-ip')
   })
 
   it('sends a JSON body on POST', async () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { formatUnits, parseUnits } from 'viem'
-import { useAccount } from 'wagmi'
+import { useAccount, useSignTypedData } from 'wagmi'
 import { WalletButton } from '@/components/WalletButton'
 import type { CashoutRoute } from '@/config/contracts'
 import type { KusdTrade } from '@/config/kusdTrade'
@@ -17,6 +17,7 @@ import { bridgeToPolygonStep, cashoutSwapSteps, feeCeiling, type KusdStep } from
 import { PSM_HALTED, psmBuyCost, psmFeeLabel } from '@/lib/psm'
 import {
   COUNTRY_KYC_EXTRAS,
+  cashoutTypedData,
   countryDisplayName,
   createRampWithdrawal,
   dedupeNetworksByName,
@@ -63,6 +64,7 @@ function cashoutErrorText(error: unknown): string {
   if (error instanceof RampApiError) {
     if (!error.outcomeUnknown && error.code === 'paused') return 'Cash-outs are temporarily paused. Please try again later.'
     if (!error.outcomeUnknown && error.code === 'not_found') return 'Cash-out not found.'
+    if (!error.outcomeUnknown && error.code === 'bad_signature') return 'Your wallet’s signature did not match this cash-out. Please try again.'
     return error.message
   }
   return 'Could not reach the payment service. Check your connection and try again.'
@@ -101,6 +103,7 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   const CENT_USDT = 10n ** BigInt(GEM.decimals - 2)
   const CENT_KUSD = 10n ** BigInt(KUSD.decimals - 2)
   const { address } = useAccount()
+  const { signTypedDataAsync } = useSignTypedData()
   const [input, setInput] = useState('')
   const [corridorId, setCorridorId] = useState('')
   const [networkId, setNetworkId] = useState('')
@@ -114,8 +117,9 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   const [pending, setPending] = useState(false)
   const inFlight = useRef(false)
   // One idempotency key per payout request: kept while the keeper's answer is unknown, dropped once it
-  // answers, and never reused for a different request (the keeper replays by key alone).
-  const idemKeyRef = useRef<{ key: string; fingerprint: string } | null>(null)
+  // answers, and never reused for a different request (the keeper replays by key alone). The wallet's
+  // signature of the request is kept with it, so a retry does not prompt again.
+  const idemKeyRef = useRef<{ key: string; fingerprint: string; signature?: string } | null>(null)
   const quoteSeqRef = useRef(0)
   const [sent, setSent] = useState<CashoutSent | null>(null)
   const [withdrawal, setWithdrawal] = useState<RampWithdrawal | null>(null)
@@ -251,8 +255,16 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
     // timeout gets a new key, or the keeper would answer with the payout for the old one.
     const fingerprint = JSON.stringify(request)
     if (idemKeyRef.current?.fingerprint !== fingerprint) idemKeyRef.current = { key: makeIdempotencyKey(owner), fingerprint }
+    const pending = idemKeyRef.current
     try {
-      const w = await createRampWithdrawal({ idempotencyKey: idemKeyRef.current.key, ...request })
+      // Only the wallet itself may say where its USDT is paid: the keeper refuses an unsigned cash-out.
+      pending.signature ??= await signTypedDataAsync(cashoutTypedData({ idempotencyKey: pending.key, ...request }))
+    } catch (error) {
+      setFormError(describeError(error))
+      return null
+    }
+    try {
+      const w = await createRampWithdrawal({ idempotencyKey: pending.key, ...request, signature: pending.signature })
       if (w.state === 'created') throw new PayoutPendingError()
       idemKeyRef.current = null // answered: the next payout gets a fresh key
       const recipient = w.depositAddress ? parseRecipient(w.depositAddress) : null

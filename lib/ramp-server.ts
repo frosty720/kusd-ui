@@ -9,6 +9,8 @@
  *   RAMP_KEEPER_API_KEY  keeper bearer token (required for ramp routes to work)
  */
 
+import { headers } from 'next/headers'
+
 const KEEPER_URL = process.env.RAMP_KEEPER_URL || 'http://localhost:8080'
 const KEEPER_API_KEY = process.env.RAMP_KEEPER_API_KEY || ''
 
@@ -24,12 +26,16 @@ export async function keeperFetch(path: string, init?: { method?: string; body?:
   if (!KEEPER_API_KEY) {
     return { status: 503, body: { error: 'ramp not configured' } }
   }
+  // The visitor as nginx saw them (it sets X-Real-IP to the connecting address): the keeper limits each
+  // visitor separately, so one visitor cannot use up the allowance every visitor of this site shares.
+  const visitor = (await headers()).get('x-real-ip')
   let res: Response
   try {
     res = await fetch(KEEPER_URL + path, {
       method: init?.method ?? 'GET',
       headers: {
         authorization: `Bearer ${KEEPER_API_KEY}`,
+        ...(visitor ? { 'x-ramp-client-ip': visitor } : {}),
         ...(init?.body !== undefined ? { 'content-type': 'application/json' } : {}),
       },
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
