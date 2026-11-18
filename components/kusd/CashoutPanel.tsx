@@ -11,12 +11,14 @@ import { type CashoutSent, useBridgeDelivery, useCashout, usePolygonCollateral }
 import { usePsmState, usePsmWallet } from '@/hooks/usePsmTrade'
 import { useRampWithdrawal, useRampWithdrawChannels } from '@/hooks/useRampWithdraw'
 import { exactAmount, parseAmount, showAmount } from '@/lib/amounts'
-import { type CashoutPlan, CashoutStrandedError, cashoutProblem, parseRecipient, planCashout } from '@/lib/cashout'
+import { type CashoutPlan, CashoutStrandedError, cashoutProblem, cashoutTreasury, parseRecipient, planCashout } from '@/lib/cashout'
 import { getExplorerTxUrl } from '@/lib/explorer'
 import { bridgeToPolygonStep, cashoutSwapSteps, feeCeiling, type KusdStep } from '@/lib/kusdSteps'
 import { PSM_HALTED, psmBuyCost, psmFeeLabel } from '@/lib/psm'
 import {
   COUNTRY_KYC_EXTRAS,
+  cashoutDeadline,
+  cashoutSignatureStale,
   cashoutTypedData,
   countryDisplayName,
   createRampWithdrawal,
@@ -57,14 +59,19 @@ class UnexpectedPayoutError extends Error {}
 /** The keeper is still opening the payout (a retry after a timeout): ask again with the same key. */
 class PayoutPendingError extends Error {}
 
+/** The keeper named a payout address that is not our pinned Polygon treasury: nothing may be sent there. */
+class WrongDestinationError extends Error {}
+
 /** A ramp failure in cash-out words. */
 function cashoutErrorText(error: unknown): string {
   if (error instanceof UnexpectedPayoutError) return 'The cash-out service sent back an unexpected answer. Nothing was sent — please try again.'
   if (error instanceof PayoutPendingError) return 'The cash-out is still being set up. Try again in a few seconds.'
+  if (error instanceof WrongDestinationError) return 'The cash-out service gave a payout address that is not ours. Nothing was sent. Please contact support.'
   if (error instanceof RampApiError) {
     if (!error.outcomeUnknown && error.code === 'paused') return 'Cash-outs are temporarily paused. Please try again later.'
     if (!error.outcomeUnknown && error.code === 'not_found') return 'Cash-out not found.'
     if (!error.outcomeUnknown && error.code === 'bad_signature') return 'Your wallet’s signature did not match this cash-out. Please try again.'
+    if (!error.outcomeUnknown && error.code === 'signature_expired') return 'Your wallet’s signature for this cash-out has expired. Please try again.'
     return error.message
   }
   return 'Could not reach the payment service. Check your connection and try again.'
@@ -118,8 +125,9 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
   const inFlight = useRef(false)
   // One idempotency key per payout request: kept while the keeper's answer is unknown, dropped once it
   // answers, and never reused for a different request (the keeper replays by key alone). The wallet's
-  // signature of the request is kept with it, so a retry does not prompt again.
-  const idemKeyRef = useRef<{ key: string; fingerprint: string; signature?: string } | null>(null)
+  // signature of the request is kept with it and its deadline, so a retry does not prompt again until
+  // deadline - 60 s; after that it is signed again with a fresh deadline and the same key (cash-out v2).
+  const idemKeyRef = useRef<{ key: string; fingerprint: string; signed?: { signature: string; deadline: string } } | null>(null)
   const quoteSeqRef = useRef(0)
   const [sent, setSent] = useState<CashoutSent | null>(null)
   const [withdrawal, setWithdrawal] = useState<RampWithdrawal | null>(null)
@@ -235,6 +243,12 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
    */
   const openPayout = async (gemAmt: bigint, owner: `0x${string}`): Promise<OpenPayout | null> => {
     setFormError('')
+    // The only place a cash-out may pay: checked before anything is signed, and against the keeper's answer below.
+    const treasury = cashoutTreasury()
+    if (!treasury) {
+      setFormError('Cash-out is not set up on this site yet. Nothing was signed or sent.')
+      return null
+    }
     const dest = destination()
     if (typeof dest === 'string') {
       setFormError(dest)
@@ -258,18 +272,23 @@ export default function CashoutPanel({ trade, route, onBusyChange }: { trade: Ku
     const pending = idemKeyRef.current
     try {
       // Only the wallet itself may say where its USDT is paid: the keeper refuses an unsigned cash-out.
-      pending.signature ??= await signTypedDataAsync(cashoutTypedData({ idempotencyKey: pending.key, ...request }))
+      if (!pending.signed || cashoutSignatureStale(pending.signed.deadline)) {
+        const deadline = cashoutDeadline()
+        const signature = await signTypedDataAsync(cashoutTypedData({ idempotencyKey: pending.key, ...request, deadline }))
+        pending.signed = { signature, deadline }
+      }
     } catch (error) {
       setFormError(describeError(error))
       return null
     }
     try {
-      const w = await createRampWithdrawal({ idempotencyKey: pending.key, ...request, signature: pending.signature })
+      const w = await createRampWithdrawal({ idempotencyKey: pending.key, ...request, signature: pending.signed.signature, deadline: pending.signed.deadline })
       if (w.state === 'created') throw new PayoutPendingError()
       idemKeyRef.current = null // answered: the next payout gets a fresh key
       const recipient = w.depositAddress ? parseRecipient(w.depositAddress) : null
       const sameAmount = /^\d+(\.\d{1,6})?$/.test(w.usdAmount) && parseUnits(w.usdAmount, GEM.decimals) === gemAmt
       if (w.state !== 'awaiting_funds' || !recipient || !sameAmount || w.currency !== dest.corridor.currency) throw new UnexpectedPayoutError()
+      if (recipient !== treasury) throw new WrongDestinationError()
       return { withdrawal: w, recipient, openedAt: performance.now() }
     } catch (error) {
       // A definitive rejection ends this attempt; an unknown outcome keeps the key for the retry.
