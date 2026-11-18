@@ -32,6 +32,19 @@ export function parseRecipient(input: string): `0x${string}` | null {
   return address === zeroAddress ? null : address
 }
 
+/**
+ * Where every cash-out's USDT must land on Polygon: the keeper's treasury wallet, which its answer names as
+ * `depositAddress` for every payout. Set in NEXT_PUBLIC_KUSD_CASHOUT_TREASURY (inlined at build time) and compared
+ * before anything is sent, so a tampered keeper answer can't redirect the money. Null when unset or not an
+ * address: cash-out then refuses to start.
+ */
+export function cashoutTreasury(): `0x${string}` | null {
+  const value = (process.env.NEXT_PUBLIC_KUSD_CASHOUT_TREASURY ?? '').trim()
+  if (!isAddress(value)) return null
+  const address = getAddress(value)
+  return address === zeroAddress ? null : address
+}
+
 export type CashoutProblem = { key: 'halted' } | { key: 'insufficient' } | { key: 'pocket'; limit: bigint } | { key: 'collateral'; limit: bigint }
 
 /**
